@@ -163,6 +163,7 @@ TARGET_BOARD_PLATFORM := kona
 TARGET_ODM_PROP += $(COMMON_PATH)/properties/odm.prop
 TARGET_PRODUCT_PROP += $(COMMON_PATH)/properties/product.prop
 TARGET_SYSTEM_PROP += $(COMMON_PATH)/properties/system.prop
+TARGET_SYSTEM_EXT_PROP += $(COMMON_PATH)/properties/system_ext.prop
 TARGET_VENDOR_PROP += $(COMMON_PATH)/properties/vendor.prop
 ifneq ($(TARGET_IS_TABLET),true)
 TARGET_VENDOR_PROP += $(COMMON_PATH)/properties/vendor_phone.prop
