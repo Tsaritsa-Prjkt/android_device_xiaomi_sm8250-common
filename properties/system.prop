@@ -14,9 +14,6 @@ debug.gralloc.gfx_ubwc_disable=0
 debug.sf.enable_hwc_vds=1
 persist.vendor.color.matrix=2
 
-# DPM
-persist.vendor.dpm.feature=1
-
 # FUSE
 persist.sys.fuse.passthrough.enable=true
 
