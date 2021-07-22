@@ -60,4 +60,7 @@
     <string name="config_batteryRemainingCapacityNode">/sys/class/power_supply/battery/charge_full</string>
     <string name="config_batteryDesignCapacityNode">/sys/class/power_supply/battery/charge_full_design</string>
     <string name="config_batteryChargeCycles">/sys/class/power_supply/battery/cycle_count</string>
+
+    <!-- Whether to aggregate for network selection list-->
+    <bool name="config_network_selection_list_aggregation_enabled">true</bool>
 </resources>
