@@ -21,7 +21,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.IBinder;
+import android.content.IntentFilter;
 import android.util.Log;
+import android.view.Display.HdrCapabilities;
+import android.view.SurfaceControl;
 
 import org.lineageos.settings.dirac.DiracUtils;
 import org.lineageos.settings.thermal.ThermalUtils;
@@ -52,6 +56,12 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
+
+        // Override HDR types
+        final IBinder displayToken = SurfaceControl.getInternalDisplayToken();
+        SurfaceControl.overrideHdrTypes(displayToken, new int[]{
+                HdrCapabilities.HDR_TYPE_DOLBY_VISION, HdrCapabilities.HDR_TYPE_HDR10,
+                HdrCapabilities.HDR_TYPE_HLG, HdrCapabilities.HDR_TYPE_HDR10_PLUS});
 
         // DC Dimming
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
