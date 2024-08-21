@@ -105,7 +105,7 @@
 
     <!--Display settings fragment -->
     <string name="display_settings_title">Custom display settings</string>
-    <string name="display_settings_summary">DC Dimming, High Brightness Mode</string>
+    <string name="display_settings_summary">DC Dimming, High Brightness Mode, Display Saturation</string>
 
     <!-- HBM settings -->
     <string name="hbm_mode_title">High Brightness Mode</string>
@@ -123,4 +123,14 @@
     <string name="dirac_apply_failed">Could not apply MiSound settings. Please try again.</string>
     <string name="dirac_speaker_title">Speaker output</string>
     <string name="dirac_speaker_summary">Speaker processing follows the active audio route and vendor support. The headphone profile below applies to headphones; it does not select a speaker mode.</string>
+    <!-- Display saturation -->
+    <string name="saturation_title">Display Saturation</string>
+    <string name="saturation_summary">Control the saturation level of the display</string>
+    <string name="saturation_footer_summary">Changing the color mode in display settings will override the saturation level, requiring it to be reapplied.</string>
+
+    <!-- Image preview -->
+    <string name="image_preview_content_description">Preview</string>
+    <string name="image_preview_next_page_content_description">Next</string>
+    <string name="image_preview_previous_page_content_description">Previous</string>
+
 </resources>

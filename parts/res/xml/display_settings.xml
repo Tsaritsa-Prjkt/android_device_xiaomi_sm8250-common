@@ -58,4 +58,26 @@
         app:seekBarIncrement="1"
         app:showSeekBarValue="true"
         app:updatesContinuously="false" />
+
+    <PreferenceCategory
+        android:key="saturation_category"
+        android:title="@string/saturation_title">
+
+        <com.android.settingslib.widget.LayoutPreference
+            android:key="saturation_preview"
+            android:layout="@layout/image_preview_layout"
+            android:selectable="false" />
+
+        <org.lineageos.settings.CustomSeekBarPreference
+            android:key="saturation"
+            android:max="200"
+            android:min="0"
+            android:defaultValue="100"
+            app:continuousUpdates="true" />
+
+        <com.android.settingslib.widget.FooterPreference
+            android:key="saturation_footer"
+            android:title="@string/saturation_footer_summary"
+            android:selectable="false" />
+    </PreferenceCategory>
 </PreferenceScreen>

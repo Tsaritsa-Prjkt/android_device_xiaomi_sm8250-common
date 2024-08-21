@@ -23,6 +23,9 @@ import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
 
 public class DisplaySettingsActivity extends CollapsingToolbarBaseActivity {
 
+    public static final String EXTRA_SCROLL_TO_SATURATION =
+            "org.lineageos.settings.extra.SCROLL_TO_SATURATION";
+
     private static final String TAG_DCDIMMING = "dcdimming";
 
     @Override
