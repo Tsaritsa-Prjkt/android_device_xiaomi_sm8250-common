@@ -21,6 +21,7 @@ import android.os.Bundle;
 import androidx.preference.Preference;
 import androidx.preference.Preference.OnPreferenceChangeListener;
 import androidx.preference.SwitchPreferenceCompat;
+import android.provider.Settings;
 
 import org.lineageos.settings.R;
 import org.lineageos.settings.display.DisplayNodes;
@@ -37,6 +38,7 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
     private SwitchPreferenceCompat mHBMPreference;
     private String HBM_ENABLE_KEY;
     private String HBM_NODE;
+    private String BACKLIGHT_NODE;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -44,6 +46,7 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
         DC_DIMMING_NODE = DisplayNodes.getDcDimmingNode();
         HBM_ENABLE_KEY = DisplayNodes.getHbmEnableKey();
         HBM_NODE = DisplayNodes.getHbmNode();
+        BACKLIGHT_NODE = DisplayNodes.getBacklight();
 
         addPreferencesFromResource(R.xml.display_settings);
         mDcDimmingPreference = (SwitchPreferenceCompat) findPreference(DC_DIMMING_ENABLE_KEY);
@@ -70,7 +73,15 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
             FileUtils.writeLine(DC_DIMMING_NODE, (Boolean) newValue ? "1":"0");
         }
         if (HBM_ENABLE_KEY.equals(preference.getKey())) {
+            boolean enabled = (Boolean) newValue;
             FileUtils.writeLine(HBM_NODE, (Boolean) newValue ? "1" : "0");
+
+            if (enabled) {
+                // Set the backlight to its maximum value
+                FileUtils.writeLine(BACKLIGHT_NODE, "2047");
+                // Update the system's screen brightness to maximum
+                Settings.System.putInt(getContext().getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
+            }
         }
         return true;
     }
