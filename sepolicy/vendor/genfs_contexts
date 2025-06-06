@@ -1,6 +1,9 @@
 # DSP
 genfscon sysfs /kernel/boot_cdsp/boot                                                               u:object_r:sysfs_msm_boot:s0
 
+# Core Control
+genfscon sysfs /devices/system/cpu/cpu[0-7]/online   u:object_r:vendor_sysfs_corecontrol:s0
+
 # Display
 genfscon sysfs /devices/platform/soc/ae00000.qcom,mdss_mdp/idle_state                               u:object_r:vendor_sysfs_graphics:s0
 
