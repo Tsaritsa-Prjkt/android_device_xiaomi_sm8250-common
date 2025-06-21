@@ -319,6 +319,22 @@
         </activity>
     
         <activity
+            android:name=".refreshrate.RefreshSettingsActivity"
+
+            android:name=".kernelmanager.KernelManagerActivity"
+            android:label="@string/kernel_manager_title">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.battery" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/kernel_manager_summary" />
+            </activity>
+
+        <activity
             android:name=".speaker.ClearSpeakerActivity"
             android:exported="false"
             android:label="@string/clear_speaker_title">
