@@ -50,6 +50,9 @@ blob_fixups: blob_fixups_user_type = {
         .regex_replace('writepid /dev/cpuset/foreground/tasks', 'task_profiles ProcessCapacityHigh'),
     'vendor/etc/init/android.hardware.neuralnetworks@1.3-service-qti.rc': blob_fixup()
         .regex_replace('writepid /dev/stune/nnapi-hal/tasks', 'task_profiles NNApiHALPerformance'),
+    'vendor/etc/seccomp_policy/imsrtp.policy': blob_fixup()
+        .regex_replace('socket: 1\n', '')
+        .regex_replace('\nsigreturn: 1', ''),
 }  # fmt: skip
 
 
