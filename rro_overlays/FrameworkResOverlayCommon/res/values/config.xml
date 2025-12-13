@@ -355,4 +355,7 @@
     <!-- Smart 5G -->
     <bool name="config_supportSmart5G">true</bool>
 
+   <!-- Bytes that the PinnerService will pin for WebView -->
+    <integer name="config_pinnerWebviewPinBytes">20971520</integer>
+
 </resources>
