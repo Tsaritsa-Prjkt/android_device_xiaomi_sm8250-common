@@ -248,6 +248,23 @@
             </intent-filter>
         </service>
 
+
+        <activity
+            android:name=".charge.ChargeActivity"
+            android:label="@string/charge_bypass_title"
+            android:exported="true"
+            android:theme="@style/Theme.SubSettingsBase">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.battery" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/charge_bypass_summary" />
+        </activity>
+
         <!-- Display Saturation tile service -->
         <service  
             android:name=".saturation.SaturationTileService"
@@ -291,5 +308,4 @@
                 android:resource="@string/clear_speaker_summary" />
         </activity>
     </application>
-
 </manifest>
