@@ -35,6 +35,7 @@ blob_fixups: blob_fixups_user_type = {
     'vendor/etc/init/vendor.qti.media.c2@1.0-service.rc': blob_fixup()
         .regex_replace(r'writepid\s+/dev/cpuset/foreground/tasks', 'task_profiles ProcessCapacityHigh HighPerformance'),
     'system_ext/lib64/libwfdservice.so': blob_fixup()
+        .add_needed('libaudiobase.so')
         .replace_needed('android.media.audio.common.types-V4-cpp.so', 'android.media.audio.common.types-V5-cpp.so'),
     'system_ext/lib64/libwfdmmsrc_system.so': blob_fixup()
         .add_needed('libaudiobase.so')
