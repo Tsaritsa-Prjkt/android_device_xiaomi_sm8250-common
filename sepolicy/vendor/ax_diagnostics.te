@@ -1,0 +1,4 @@
+# GPU monitoring
+allow ax_diagnostics vendor_sysfs_kgsl:file r_file_perms;
+allow ax_diagnostics vendor_sysfs_kgsl:lnk_file r_file_perms;
+allow ax_diagnostics vendor_sysfs_kgsl_gpuclk:file r_file_perms;
