@@ -182,6 +182,8 @@ PRODUCT_PACKAGES += \
 
 $(call soong_config_set,qtidisplay,gralloc_handle_has_reserved_size,true)
 
+$(call soong_config_set,qtidisplay,target_uses_tp10_ubwc_for_10bit,true)
+
 # Dolby
 $(call inherit-product, hardware/dolby/dolby.mk)
 
