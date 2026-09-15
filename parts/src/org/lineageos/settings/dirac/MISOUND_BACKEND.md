@@ -24,3 +24,17 @@ Validation: actual DiracSound.java compiled against an AudioEffect test stub;
 native/framework enable synchronization and non-finite EQ rejection passed.
 Full XiaomiParts build, real parameter readback and acoustic testing remain
 separate validation steps.
+
+## Headsets, presets, scenes and Hi-Fi follow-up
+
+MiSound_command Thumb instructions at 0x8a78-0x8a80 accept EQ indices 0..9.
+Existing seven-band preset curves are retained, but bands 7..9 are cleared on
+application so previous native state cannot leak into a selected preset.
+The six-band constant in stock Java belongs to ear compensation, not normal EQ.
+Headset choices are filtered through parameter 19 with bounded little-endian
+count parsing. Existing labels are retained; model marketing names are not
+inferred from the stock Java constants, which differ from this UI catalog.
+Scenes 1,2,3,4 match stock music/movie/vocal/auto values; 0 is default.
+Hi-Fi parameter 8 and the separate hifi_mode path are retained: the shipped
+32-bit audio.primary.kona.so contains that HAL key and Hi-Fi route handlers.
+Hardware Hi-Fi operation and acoustic accuracy of preset curves remain untested.
