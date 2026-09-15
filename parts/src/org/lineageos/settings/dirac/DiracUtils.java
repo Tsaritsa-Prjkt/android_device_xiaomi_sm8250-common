@@ -140,7 +140,7 @@ public class DiracUtils {
     }
 
     private void applyEnabled(boolean enable) {
-        // Both the proprietary music parameter and AudioEffect state must agree.
+        // Music mode, native MiSound enable and Android effect state must agree.
         mSound.setMusic(enable ? 1 : 0);
         int status = mSound.setEnabled(enable);
         if (status != AudioEffect.SUCCESS) {
