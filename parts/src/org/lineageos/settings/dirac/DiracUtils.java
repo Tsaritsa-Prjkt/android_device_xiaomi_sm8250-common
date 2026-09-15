@@ -212,7 +212,14 @@ public class DiracUtils {
                 throw new IllegalArgumentException("Invalid MiSound band gain");
             }
         }
-        for (int band = 0; band < levels.length; band++) mSound.setLevel(band, levels[band]);
+        for (int band = 0; band < DiracSound.EQ_BAND_COUNT; band++) {
+            // Preserve existing seven-band presets; reset all unused native bands.
+            mSound.setLevel(band, band < levels.length ? levels[band] : 0f);
+        }
+    }
+
+    public synchronized int[] getSupportedHeadsets() {
+        return requireEffect().getHeadsetList();
     }
 
     public synchronized void setHeadsetType(int value) {
