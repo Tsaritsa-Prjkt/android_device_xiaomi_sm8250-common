@@ -85,6 +85,31 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         android.content.SharedPreferences prefs =
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(
                         requireContext().createDeviceProtectedStorageContext());
+        if (available) {
+            try {
+                int[] supported = mDiracUtils.getSupportedHeadsets();
+                CharSequence[] names = getResources().getTextArray(R.array.dirac_headset_pref_entries);
+                String[] values = getResources().getStringArray(R.array.dirac_headset_pref_values);
+                java.util.ArrayList<CharSequence> entries = new java.util.ArrayList<>();
+                java.util.ArrayList<CharSequence> ids = new java.util.ArrayList<>();
+                for (int index = 0; index < values.length; index++) {
+                    int id = Integer.parseInt(values[index]);
+                    for (int supportedId : supported) {
+                        if (id == supportedId) {
+                            entries.add(names[index]);
+                            ids.add(values[index]);
+                            break;
+                        }
+                    }
+                }
+                if (!ids.isEmpty()) {
+                    mHeadsetType.setEntries(entries.toArray(new CharSequence[0]));
+                    mHeadsetType.setEntryValues(ids.toArray(new CharSequence[0]));
+                }
+            } catch (RuntimeException error) {
+                Log.w(TAG, "Cannot query supported MiSound headsets", error);
+            }
+        }
         mHeadsetType.setValue(prefs.getString(DiracUtils.PREF_HEADSET, "0"));
         mPreset.setValue(prefs.getString(DiracUtils.PREF_PRESET, "0,0,0,0,0,0,0"));
         mScenes.setValue(prefs.getString(DiracUtils.PREF_SCENE, "4"));
