@@ -38,3 +38,30 @@ Scenes 1,2,3,4 match stock music/movie/vocal/auto values; 0 is default.
 Hi-Fi parameter 8 and the separate hifi_mode path are retained: the shipped
 32-bit audio.primary.kona.so contains that HAL key and Hi-Fi route handlers.
 Hardware Hi-Fi operation and acoustic accuracy of preset curves remain untested.
+
+## Rooted alioth validation (2026-09-16)
+
+Device binary SHA-256 matches the reference above. A temporary app_process
+probe attached to the live MiSound session, saved scalar parameters and framework
+enable state, tested writes with processing disabled, and restored them before
+releasing control. All 24 UI headset IDs and scenarios 0..4 round-tripped; music
+and native enable 0/1 round-tripped. All ten existing EQ gains were accepted.
+EQ GET rejects band 0 although SET accepts it; bands 1..9 were readable.
+
+Parameter 19 returned only five bytes: count=1 followed by byte 12. This is not
+an intact stock count-plus-int32-list reply. Treat it as unavailable and retain
+the configured catalog, without repeated malformed-response exceptions.
+
+Parameter 8 accepted 1 but read back 0. The product sets
+vendor.audio.feature.hifi_audio.enable=false. Hide Hi-Fi and skip its restore
+writes while that HAL feature is disabled; never enable the HAL feature merely
+to expose a switch. Other products with the feature enabled retain the control.
+These checks validate command acceptance/state, not acoustic quality, every
+physical headset route, or hardware Hi-Fi performance.
+
+The patched DiracSound class also ran on the device against the real framework:
+malformed-list fallback returned empty, and enable/disable readback passed.
+Full logs contain ACDB -100 (no active stream) and persistent-calibration -1
+errors during idle probing. Parameter success therefore does not establish DSP
+application. Active playback and physical-route validation remain necessary.
+The UI changes have not been built or installed by this test.

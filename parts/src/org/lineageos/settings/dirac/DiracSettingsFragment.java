@@ -81,10 +81,14 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         mSwitchBar.setEnabled(available);
         mSwitchBar.setChecked(enabled);
         mSwitchBar.setSummary(available ? null : getString(R.string.dirac_unavailable));
+        mHifi.setVisible(mDiracUtils != null && mDiracUtils.isHifiSupported());
         setControlsEnabled(enabled);
         android.content.SharedPreferences prefs =
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(
                         requireContext().createDeviceProtectedStorageContext());
+        // Restore the complete catalog if a later query is unavailable or malformed.
+        mHeadsetType.setEntries(R.array.dirac_headset_pref_entries);
+        mHeadsetType.setEntryValues(R.array.dirac_headset_pref_values);
         if (available) {
             try {
                 int[] supported = mDiracUtils.getSupportedHeadsets();

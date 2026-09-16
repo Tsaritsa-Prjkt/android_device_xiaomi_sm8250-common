@@ -232,12 +232,21 @@ public class DiracUtils {
     }
 
     public synchronized void setHifiMode(int value) {
+        if (!isHifiSupported()) {
+            throw new UnsupportedOperationException("HAL Hi-Fi feature is disabled");
+        }
         requireEffect();
         applyHifi(value != 0);
         mPreferences.edit().putBoolean(PREF_HIFI, value != 0).apply();
     }
 
+    public boolean isHifiSupported() {
+        return android.os.SystemProperties.getBoolean(
+                "vendor.audio.feature.hifi_audio.enable", false);
+    }
+
     private void applyHifi(boolean enabled) {
+        if (!isHifiSupported()) return;
         mSound.setHifiMode(enabled ? 1 : 0);
         mAudioManager.setParameters("hifi_mode=" + enabled);
     }
