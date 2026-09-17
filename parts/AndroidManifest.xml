@@ -206,6 +206,10 @@
         </service>
 
         <service
+            android:name=".display.AutoHBMService"
+            android:exported="false" />
+
+        <service
             android:name=".touchsampling.TouchSamplingTileService"
             android:icon="@drawable/ic_htsr"
             android:label="@string/htsr_enable_title"
