@@ -21,7 +21,6 @@ import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.provider.Settings;
 
 import androidx.preference.Preference;
 import androidx.preference.Preference.OnPreferenceChangeListener;
@@ -48,7 +47,6 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
     private String mHbmEnableKey;
     private String mAutoHbmEnableKey;
     private String mHbmNode;
-    private String mBacklightNode;
 
     private SharedPreferences mPrefs;
     private boolean mHbmSupported;
@@ -61,7 +59,6 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
         mHbmEnableKey = DisplayNodes.getHbmEnableKey();
         mAutoHbmEnableKey = DisplayNodes.getAutoHbmEnableKey();
         mHbmNode = DisplayNodes.getHbmNode();
-        mBacklightNode = DisplayNodes.getBacklight();
 
         addPreferencesFromResource(R.xml.display_settings);
         mPrefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
@@ -115,10 +112,13 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
         mHBMDisableTimePreference.setEnabled(mAutoHbmSupported && autoEnabled);
     }
 
-    private void disableManualHbm() {
-        FileUtils.writeLine(mHbmNode, "0");
+    private boolean disableManualHbm() {
+        if (!HBMController.disable(requireContext(), mPrefs)) {
+            return false;
+        }
         mPrefs.edit().putBoolean(mHbmEnableKey, false).apply();
         mHBMPreference.setChecked(false);
+        return true;
     }
 
     @Override
@@ -134,13 +134,9 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
             }
 
             boolean enabled = (Boolean) newValue;
-            FileUtils.writeLine(mHbmNode, enabled ? "1" : "0");
-            if (enabled) {
-                FileUtils.writeLine(mBacklightNode, "2047");
-                Settings.System.putInt(requireContext().getContentResolver(),
-                        Settings.System.SCREEN_BRIGHTNESS, 255);
-            }
-            return true;
+            return enabled
+                    ? HBMController.enable(requireContext(), mPrefs)
+                    : HBMController.disable(requireContext(), mPrefs);
         }
 
         if (mAutoHbmEnableKey.equals(preference.getKey())) {
@@ -149,11 +145,18 @@ public class DisplaySettingsFragment extends SettingsBasePreferenceFragment impl
                 return false;
             }
 
+            if (enabled) {
+                if (!disableManualHbm()) {
+                    return false;
+                }
+            } else if (!HBMController.disable(requireContext(), mPrefs)) {
+                return false;
+            }
+
             mPrefs.edit().putBoolean(mAutoHbmEnableKey, enabled).apply();
             mAutoHBMPreference.setChecked(enabled);
 
             if (enabled) {
-                disableManualHbm();
                 AutoHBMService.start(requireContext());
             } else {
                 AutoHBMService.stop(requireContext());

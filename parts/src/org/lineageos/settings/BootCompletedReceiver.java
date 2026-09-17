@@ -31,6 +31,7 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.settings.dirac.DiracUtils;
 import org.lineageos.settings.display.AutoHBMService;
 import org.lineageos.settings.display.DisplayNodes;
+import org.lineageos.settings.display.HBMController;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
@@ -78,11 +79,15 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         boolean autoHbmEnabled = sharedPrefs.getBoolean(DisplayNodes.getAutoHbmEnableKey(), false);
         if (autoHbmEnabled) {
             sharedPrefs.edit().putBoolean(DisplayNodes.getHbmEnableKey(), false).apply();
-            FileUtils.writeLine(DisplayNodes.getHbmNode(), "0");
+            HBMController.disable(context, sharedPrefs);
             AutoHBMService.start(context);
         } else {
             boolean hbmEnabled = sharedPrefs.getBoolean(DisplayNodes.getHbmEnableKey(), false);
-            FileUtils.writeLine(DisplayNodes.getHbmNode(), hbmEnabled ? "1" : "0");
+            if (hbmEnabled) {
+                HBMController.enable(context, sharedPrefs);
+            } else {
+                HBMController.disable(context, sharedPrefs);
+            }
         }
     }
 }
