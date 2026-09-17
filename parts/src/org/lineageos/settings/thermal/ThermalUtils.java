@@ -115,10 +115,36 @@ public final class ThermalUtils {
         return value;
     }
 
+    // A package is a complete comma-delimited token, never a suffix match.
+    private static boolean hasPackage(String profile, String packageName) {
+        if (packageName == null || packageName.isEmpty()) return false;
+        int separator = profile.indexOf('=');
+        if (separator < 0) return false;
+        for (String entry : profile.substring(separator + 1).split(",")) {
+            if (packageName.equals(entry)) return true;
+        }
+        return false;
+    }
+
+    private static String removePackage(String profile, String packageName) {
+        if (packageName == null || packageName.isEmpty()) return profile;
+        int separator = profile.indexOf('=');
+        if (separator < 0) return profile;
+        StringBuilder result = new StringBuilder(profile.substring(0, separator + 1));
+        for (String entry : profile.substring(separator + 1).split(",")) {
+            if (!entry.isEmpty() && !packageName.equals(entry)) {
+                result.append(entry).append(',');
+            }
+        }
+        return result.toString();
+    }
+
     protected void writePackage(String packageName, int mode) {
         String value = getValue();
-        value = value.replace(packageName + ",", "");
         String[] modes = value.split(":");
+        for (int i = 0; i < modes.length; i++) {
+            modes[i] = removePackage(modes[i], packageName);
+        }
         String finalString;
 
         switch (mode) {
@@ -152,17 +178,17 @@ public final class ThermalUtils {
         String value = getValue();
         String[] modes = value.split(":");
         int state = STATE_DEFAULT;
-        if (modes[0].contains(packageName + ",")) {
+        if (hasPackage(modes[0], packageName)) {
             state = STATE_BENCHMARK;
-        } else if (modes[1].contains(packageName + ",")) {
+        } else if (hasPackage(modes[1], packageName)) {
             state = STATE_BROWSER;
-        } else if (modes[2].contains(packageName + ",")) {
+        } else if (hasPackage(modes[2], packageName)) {
             state = STATE_CAMERA;
-        } else if (modes[3].contains(packageName + ",")) {
+        } else if (hasPackage(modes[3], packageName)) {
             state = STATE_DIALER;
-        } else if (modes[4].contains(packageName + ",")) {
+        } else if (hasPackage(modes[4], packageName)) {
             state = STATE_GAMING;
-        } else if (modes[5].contains(packageName + ",")) {
+        } else if (hasPackage(modes[5], packageName)) {
             state = STATE_STREAMING;
         }
 
@@ -181,23 +207,23 @@ public final class ThermalUtils {
         if (value != null) {
             modes = value.split(":");
 
-            if (modes[0].contains(packageName + ",")) {
+            if (hasPackage(modes[0], packageName)) {
                 state = THERMAL_STATE_BENCHMARK;
-            } else if (modes[1].contains(packageName + ",")) {
+            } else if (hasPackage(modes[1], packageName)) {
                 state = THERMAL_STATE_BROWSER;
-            } else if (modes[2].contains(packageName + ",")) {
+            } else if (hasPackage(modes[2], packageName)) {
                 state = THERMAL_STATE_CAMERA;
-            } else if (modes[3].contains(packageName + ",")) {
+            } else if (hasPackage(modes[3], packageName)) {
                 state = THERMAL_STATE_DIALER;
-            } else if (modes[4].contains(packageName + ",")) {
+            } else if (hasPackage(modes[4], packageName)) {
                 state = THERMAL_STATE_GAMING;
-            } else if (modes[5].contains(packageName + ",")) {
+            } else if (hasPackage(modes[5], packageName)) {
                 state = THERMAL_STATE_STREAMING;
             }
         }
         FileUtils.writeLine(THERMAL_SCONFIG, state);
 
-        if (state == THERMAL_STATE_BENCHMARK || state == THERMAL_STATE_GAMING) {
+        if (THERMAL_STATE_BENCHMARK.equals(state) || THERMAL_STATE_GAMING.equals(state)) {
             updateTouchModes(packageName);
         } else if (mTouchModeChanged) {
             resetTouchModes();
