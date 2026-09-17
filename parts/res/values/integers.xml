@@ -16,4 +16,13 @@
     <integer name="smoothness_default">0</integer>
     <integer name="smoothness_min">0</integer>
     <integer name="smoothness_max">3</integer>
+
+    <!-- Auto HBM -->
+    <integer name="auto_hbm_threshold_default">7000</integer>
+    <integer name="auto_hbm_threshold_min">0</integer>
+    <integer name="auto_hbm_threshold_max">60000</integer>
+    <integer name="auto_hbm_threshold_step">1000</integer>
+    <integer name="auto_hbm_disable_time_default">1</integer>
+    <integer name="auto_hbm_disable_time_min">1</integer>
+    <integer name="auto_hbm_disable_time_max">10</integer>
 </resources>
