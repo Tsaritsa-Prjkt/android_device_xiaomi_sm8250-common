@@ -21,7 +21,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.UserHandle;
-import android.provider.Settings;
 import android.util.Log;
 
 import androidx.preference.PreferenceManager;
@@ -111,8 +110,10 @@ public class AutoHBMService extends Service implements
         }
 
         if (!mInitialized) {
-            // Recover from a process death that may have left the panel HBM node enabled.
-            FileUtils.writeLine(DisplayNodes.getHbmNode(), "0");
+            // Recover from process death and restore the pre-HBM brightness snapshot, if any.
+            if (!HBMController.disable(this, mPrefs)) {
+                Log.w(TAG, "Failed to recover HBM state");
+            }
             mAutoHBMActive = false;
             mInitialized = true;
         }
@@ -177,15 +178,13 @@ public class AutoHBMService extends Service implements
         }
 
         if (enabled) {
-            if (!FileUtils.writeLine(DisplayNodes.getHbmNode(), "1")) {
+            if (!HBMController.enable(this, mPrefs)) {
                 Log.w(TAG, "Failed to enable HBM");
                 return;
             }
             mAutoHBMActive = true;
-            FileUtils.writeLine(DisplayNodes.getBacklight(), "2047");
-            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
         } else {
-            if (FileUtils.writeLine(DisplayNodes.getHbmNode(), "0")) {
+            if (HBMController.disable(this, mPrefs)) {
                 mAutoHBMActive = false;
             } else {
                 Log.w(TAG, "Failed to disable HBM");

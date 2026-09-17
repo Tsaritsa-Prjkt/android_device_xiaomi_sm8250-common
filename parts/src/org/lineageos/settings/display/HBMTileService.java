@@ -18,20 +18,15 @@
 package org.lineageos.settings.display;
 
 import android.content.SharedPreferences;
-import android.provider.Settings;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 
 import androidx.preference.PreferenceManager;
 
-import org.lineageos.settings.utils.FileUtils;
-
 public class HBMTileService extends TileService {
 
     private String HBM_ENABLE_KEY;
     private String AUTO_HBM_ENABLE_KEY;
-    private String HBM_NODE;
-    private String BACKLIGHT_NODE;
 
     private void updateUI(boolean enabled, boolean autoEnabled) {
         final Tile tile = getQsTile();
@@ -45,8 +40,6 @@ public class HBMTileService extends TileService {
         super.onStartListening();
         HBM_ENABLE_KEY = DisplayNodes.getHbmEnableKey();
         AUTO_HBM_ENABLE_KEY = DisplayNodes.getAutoHbmEnableKey();
-        HBM_NODE = DisplayNodes.getHbmNode();
-        BACKLIGHT_NODE = DisplayNodes.getBacklight();
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         updateUI(sharedPrefs.getBoolean(HBM_ENABLE_KEY, false),
                 sharedPrefs.getBoolean(AUTO_HBM_ENABLE_KEY, false));
@@ -67,14 +60,14 @@ public class HBMTileService extends TileService {
             return;
         }
         final boolean enabled = !(sharedPrefs.getBoolean(HBM_ENABLE_KEY, false));
-        FileUtils.writeLine(HBM_NODE, enabled ? "1" : "0");
-        sharedPrefs.edit().putBoolean(HBM_ENABLE_KEY, enabled).commit();
-        if (enabled) {
-            // Set the backlight to its maximum value
-            FileUtils.writeLine(BACKLIGHT_NODE, "2047");
-            // Update the system's screen brightness to maximum
-            Settings.System.putInt(this.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
+        final boolean success = enabled
+                ? HBMController.enable(this, sharedPrefs)
+                : HBMController.disable(this, sharedPrefs);
+        if (!success) {
+            updateUI(!enabled, false);
+            return;
         }
+        sharedPrefs.edit().putBoolean(HBM_ENABLE_KEY, enabled).commit();
         updateUI(enabled, false);
     }
 }
