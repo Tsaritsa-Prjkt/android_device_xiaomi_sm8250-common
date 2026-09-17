@@ -17,26 +17,26 @@
 */
 package org.lineageos.settings.display;
 
-import android.annotation.TargetApi;
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.provider.Settings;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
-import androidx.preference.PreferenceManager;
-import android.provider.Settings;
 
-import org.lineageos.settings.display.DisplayNodes;
+import androidx.preference.PreferenceManager;
+
 import org.lineageos.settings.utils.FileUtils;
 
 public class HBMTileService extends TileService {
 
     private String HBM_ENABLE_KEY;
+    private String AUTO_HBM_ENABLE_KEY;
     private String HBM_NODE;
     private String BACKLIGHT_NODE;
 
-    private void updateUI(boolean enabled) {
+    private void updateUI(boolean enabled, boolean autoEnabled) {
         final Tile tile = getQsTile();
-        tile.setState(enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        tile.setState(autoEnabled ? Tile.STATE_UNAVAILABLE
+                : enabled ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         tile.updateTile();
     }
 
@@ -44,10 +44,12 @@ public class HBMTileService extends TileService {
     public void onStartListening() {
         super.onStartListening();
         HBM_ENABLE_KEY = DisplayNodes.getHbmEnableKey();
+        AUTO_HBM_ENABLE_KEY = DisplayNodes.getAutoHbmEnableKey();
         HBM_NODE = DisplayNodes.getHbmNode();
         BACKLIGHT_NODE = DisplayNodes.getBacklight();
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-        updateUI(sharedPrefs.getBoolean(HBM_ENABLE_KEY, false));
+        updateUI(sharedPrefs.getBoolean(HBM_ENABLE_KEY, false),
+                sharedPrefs.getBoolean(AUTO_HBM_ENABLE_KEY, false));
     }
 
     @Override
@@ -59,6 +61,11 @@ public class HBMTileService extends TileService {
     public void onClick() {
         super.onClick();
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        final boolean autoEnabled = sharedPrefs.getBoolean(AUTO_HBM_ENABLE_KEY, false);
+        if (autoEnabled) {
+            updateUI(false, true);
+            return;
+        }
         final boolean enabled = !(sharedPrefs.getBoolean(HBM_ENABLE_KEY, false));
         FileUtils.writeLine(HBM_NODE, enabled ? "1" : "0");
         sharedPrefs.edit().putBoolean(HBM_ENABLE_KEY, enabled).commit();
@@ -68,6 +75,6 @@ public class HBMTileService extends TileService {
             // Update the system's screen brightness to maximum
             Settings.System.putInt(this.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
         }
-        updateUI(enabled);
+        updateUI(enabled, false);
     }
 }

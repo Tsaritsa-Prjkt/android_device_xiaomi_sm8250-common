@@ -17,72 +17,152 @@
 package org.lineageos.settings.display;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
-import androidx.preference.Preference;
-import androidx.preference.Preference.OnPreferenceChangeListener;
-import androidx.preference.SwitchPreferenceCompat;
 import android.provider.Settings;
 
-import org.lineageos.settings.R;
-import org.lineageos.settings.display.DisplayNodes;
-import org.lineageos.settings.utils.FileUtils;
+import androidx.preference.Preference;
+import androidx.preference.Preference.OnPreferenceChangeListener;
+import androidx.preference.PreferenceManager;
+import androidx.preference.SeekBarPreference;
+import androidx.preference.SwitchPreferenceCompat;
 
 import com.android.settingslib.widget.SettingsBasePreferenceFragment;
+
+import org.lineageos.settings.R;
+import org.lineageos.settings.utils.FileUtils;
 
 public class DisplaySettingsFragment extends SettingsBasePreferenceFragment implements
         OnPreferenceChangeListener {
 
     private SwitchPreferenceCompat mDcDimmingPreference;
-    private String DC_DIMMING_ENABLE_KEY;
-    private String DC_DIMMING_NODE;
     private SwitchPreferenceCompat mHBMPreference;
-    private String HBM_ENABLE_KEY;
-    private String HBM_NODE;
-    private String BACKLIGHT_NODE;
+    private SwitchPreferenceCompat mAutoHBMPreference;
+    private SeekBarPreference mAutoHBMThresholdPreference;
+    private SeekBarPreference mHBMDisableTimePreference;
+
+    private String mDcDimmingEnableKey;
+    private String mDcDimmingNode;
+    private String mHbmEnableKey;
+    private String mAutoHbmEnableKey;
+    private String mHbmNode;
+    private String mBacklightNode;
+
+    private SharedPreferences mPrefs;
+    private boolean mHbmSupported;
+    private boolean mAutoHbmSupported;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        DC_DIMMING_ENABLE_KEY = DisplayNodes.getDcDimmingEnableKey();
-        DC_DIMMING_NODE = DisplayNodes.getDcDimmingNode();
-        HBM_ENABLE_KEY = DisplayNodes.getHbmEnableKey();
-        HBM_NODE = DisplayNodes.getHbmNode();
-        BACKLIGHT_NODE = DisplayNodes.getBacklight();
+        mDcDimmingEnableKey = DisplayNodes.getDcDimmingEnableKey();
+        mDcDimmingNode = DisplayNodes.getDcDimmingNode();
+        mHbmEnableKey = DisplayNodes.getHbmEnableKey();
+        mAutoHbmEnableKey = DisplayNodes.getAutoHbmEnableKey();
+        mHbmNode = DisplayNodes.getHbmNode();
+        mBacklightNode = DisplayNodes.getBacklight();
 
         addPreferencesFromResource(R.xml.display_settings);
-        mDcDimmingPreference = (SwitchPreferenceCompat) findPreference(DC_DIMMING_ENABLE_KEY);
-        if (FileUtils.fileExists(DC_DIMMING_NODE)) {
+        mPrefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
+
+        mDcDimmingPreference = findPreference(mDcDimmingEnableKey);
+        mHBMPreference = findPreference(mHbmEnableKey);
+        mAutoHBMPreference = findPreference(mAutoHbmEnableKey);
+        mAutoHBMThresholdPreference = findPreference(DisplayNodes.getAutoHbmThresholdKey());
+        mHBMDisableTimePreference = findPreference(DisplayNodes.getAutoHbmDisableTimeKey());
+
+        if (FileUtils.fileExists(mDcDimmingNode)) {
             mDcDimmingPreference.setEnabled(true);
             mDcDimmingPreference.setOnPreferenceChangeListener(this);
         } else {
             mDcDimmingPreference.setSummary(R.string.dc_dimming_enable_summary_not_supported);
             mDcDimmingPreference.setEnabled(false);
         }
-        mHBMPreference = (SwitchPreferenceCompat) findPreference(HBM_ENABLE_KEY);
-        if (FileUtils.fileExists(HBM_NODE)) {
-            mHBMPreference.setEnabled(true);
+
+        mHbmSupported = FileUtils.fileExists(mHbmNode);
+        mAutoHbmSupported = mHbmSupported && hasLightSensor(requireContext());
+
+        if (mHbmSupported) {
             mHBMPreference.setOnPreferenceChangeListener(this);
         } else {
             mHBMPreference.setSummary(R.string.hbm_enable_summary_not_supported);
-            mHBMPreference.setEnabled(false);
         }
+
+        mAutoHBMPreference.setPersistent(false);
+        mAutoHBMPreference.setChecked(mPrefs.getBoolean(mAutoHbmEnableKey, false));
+        mAutoHBMPreference.setOnPreferenceChangeListener(this);
+        if (!mAutoHbmSupported) {
+            mAutoHBMPreference.setChecked(false);
+            mAutoHBMPreference.setSummary(R.string.auto_hbm_summary_not_supported);
+            mPrefs.edit().putBoolean(mAutoHbmEnableKey, false).apply();
+            AutoHBMService.stop(requireContext());
+        }
+
+        updateHbmPreferenceState();
+    }
+
+    private static boolean hasLightSensor(Context context) {
+        SensorManager sensorManager = context.getSystemService(SensorManager.class);
+        return sensorManager != null && sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT) != null;
+    }
+
+    private void updateHbmPreferenceState() {
+        boolean autoEnabled = mAutoHBMPreference.isChecked() && mAutoHbmSupported;
+        mHBMPreference.setEnabled(mHbmSupported && !autoEnabled);
+        mAutoHBMPreference.setEnabled(mAutoHbmSupported);
+        mAutoHBMThresholdPreference.setEnabled(mAutoHbmSupported && autoEnabled);
+        mHBMDisableTimePreference.setEnabled(mAutoHbmSupported && autoEnabled);
+    }
+
+    private void disableManualHbm() {
+        FileUtils.writeLine(mHbmNode, "0");
+        mPrefs.edit().putBoolean(mHbmEnableKey, false).apply();
+        mHBMPreference.setChecked(false);
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (DC_DIMMING_ENABLE_KEY.equals(preference.getKey())) {
-            FileUtils.writeLine(DC_DIMMING_NODE, (Boolean) newValue ? "1":"0");
+        if (mDcDimmingEnableKey.equals(preference.getKey())) {
+            FileUtils.writeLine(mDcDimmingNode, (Boolean) newValue ? "1" : "0");
+            return true;
         }
-        if (HBM_ENABLE_KEY.equals(preference.getKey())) {
+
+        if (mHbmEnableKey.equals(preference.getKey())) {
+            if (mPrefs.getBoolean(mAutoHbmEnableKey, false)) {
+                return false;
+            }
+
             boolean enabled = (Boolean) newValue;
-            FileUtils.writeLine(HBM_NODE, (Boolean) newValue ? "1" : "0");
+            FileUtils.writeLine(mHbmNode, enabled ? "1" : "0");
+            if (enabled) {
+                FileUtils.writeLine(mBacklightNode, "2047");
+                Settings.System.putInt(requireContext().getContentResolver(),
+                        Settings.System.SCREEN_BRIGHTNESS, 255);
+            }
+            return true;
+        }
+
+        if (mAutoHbmEnableKey.equals(preference.getKey())) {
+            boolean enabled = (Boolean) newValue;
+            if (!mAutoHbmSupported) {
+                return false;
+            }
+
+            mPrefs.edit().putBoolean(mAutoHbmEnableKey, enabled).apply();
+            mAutoHBMPreference.setChecked(enabled);
 
             if (enabled) {
-                // Set the backlight to its maximum value
-                FileUtils.writeLine(BACKLIGHT_NODE, "2047");
-                // Update the system's screen brightness to maximum
-                Settings.System.putInt(getContext().getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, 255);
+                disableManualHbm();
+                AutoHBMService.start(requireContext());
+            } else {
+                AutoHBMService.stop(requireContext());
             }
+
+            updateHbmPreferenceState();
+            return true;
         }
-        return true;
+
+        return false;
     }
 }

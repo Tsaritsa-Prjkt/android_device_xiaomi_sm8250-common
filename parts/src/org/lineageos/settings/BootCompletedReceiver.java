@@ -20,30 +20,28 @@ package org.lineageos.settings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.hardware.display.DisplayManager;
-import android.os.IBinder;
-import android.content.IntentFilter;
 import android.util.Log;
 import android.view.Display;
 import android.view.Display.HdrCapabilities;
+import android.content.IntentFilter;
+import android.os.IBinder;
+
+import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.dirac.DiracUtils;
+import org.lineageos.settings.display.AutoHBMService;
+import org.lineageos.settings.display.DisplayNodes;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.utils.FileUtils;
-import android.content.SharedPreferences;
-import androidx.preference.PreferenceManager;
 
 public class BootCompletedReceiver extends BroadcastReceiver {
 
     private static final boolean DEBUG = false;
     private static final String TAG = "XiaomiParts";
-    private static final String DC_DIMMING_ENABLE_KEY = "dc_dimming_enable";
-    private static final String DC_DIMMING_NODE = "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/msm_fb_ea_enable";
-    private static final String HBM_ENABLE_KEY = "hbm_mode";
-    private static final String HBM_NODE = "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/hbm";
 
     @Override
     public void onReceive(final Context context, Intent intent) {
@@ -74,9 +72,17 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         // DC Dimming
         SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(context);
 
-        boolean dcDimmingEnabled = sharedPrefs.getBoolean(DC_DIMMING_ENABLE_KEY, false);
-        FileUtils.writeLine(DC_DIMMING_NODE, dcDimmingEnabled ? "1" : "0");
-        boolean hbmEnabled = sharedPrefs.getBoolean(HBM_ENABLE_KEY, false);
-        FileUtils.writeLine(HBM_NODE, hbmEnabled ? "1" : "0");
+        boolean dcDimmingEnabled = sharedPrefs.getBoolean(DisplayNodes.getDcDimmingEnableKey(), false);
+        FileUtils.writeLine(DisplayNodes.getDcDimmingNode(), dcDimmingEnabled ? "1" : "0");
+
+        boolean autoHbmEnabled = sharedPrefs.getBoolean(DisplayNodes.getAutoHbmEnableKey(), false);
+        if (autoHbmEnabled) {
+            sharedPrefs.edit().putBoolean(DisplayNodes.getHbmEnableKey(), false).apply();
+            FileUtils.writeLine(DisplayNodes.getHbmNode(), "0");
+            AutoHBMService.start(context);
+        } else {
+            boolean hbmEnabled = sharedPrefs.getBoolean(DisplayNodes.getHbmEnableKey(), false);
+            FileUtils.writeLine(DisplayNodes.getHbmNode(), hbmEnabled ? "1" : "0");
+        }
     }
 }
