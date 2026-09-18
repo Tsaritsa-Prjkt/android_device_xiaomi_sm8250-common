@@ -138,6 +138,13 @@
     <string name="hbm_mode_title">High brightness mode</string>
     <string name="hbm_mode_summary">Allow higher display brightness for better visibility in direct sunlight. Uses more power.</string>
     <string name="hbm_enable_summary_not_supported">High brightness mode is not supported by the current kernel</string>
+    <string name="auto_hbm_title">Automatic high brightness mode</string>
+    <string name="auto_hbm_summary">Automatically enable high brightness mode in bright ambient light</string>
+    <string name="auto_hbm_threshold_title">Ambient light threshold</string>
+    <string name="auto_hbm_threshold_summary">Light level in lux required to enable high brightness mode</string>
+    <string name="hbm_disable_time_title">Auto HBM disable delay</string>
+    <string name="hbm_disable_time_summary">Delay in seconds before Auto HBM turns off after ambient light drops</string>
+    <string name="auto_hbm_summary_not_supported">Automatic HBM requires a light sensor and kernel HBM support</string>
 
     <string name="dirac_unavailable">MiSound is temporarily unavailable</string>
     <string name="dirac_apply_failed">Could not apply MiSound settings. Please try again.</string>

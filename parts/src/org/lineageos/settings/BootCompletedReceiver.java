@@ -11,9 +11,7 @@ package org.lineageos.settings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.hardware.display.DisplayManager;
-import android.os.IBinder;
 import android.util.Log;
 import android.view.Display;
 import android.view.Display.HdrCapabilities;
@@ -21,6 +19,7 @@ import android.view.Display.HdrCapabilities;
 import org.lineageos.settings.dirac.DiracUtils;
 import org.lineageos.settings.display.DisplayUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
+import org.lineageos.settings.saturation.SaturationUtils;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 
@@ -42,6 +41,9 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         ThermalUtils.startService(context);
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
+        if (!SaturationUtils.restore(context)) {
+            Log.w(TAG, "Cannot restore display saturation");
+        }
         overrideHdrTypes(context);
     }
 
