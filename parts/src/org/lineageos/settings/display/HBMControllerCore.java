@@ -26,22 +26,17 @@ final class HBMControllerCore {
     private HBMControllerCore() { }
 
     static boolean enable(Backend backend) {
-        boolean capturedSnapshot = false;
         if (!backend.hasSnapshot()) {
             int screenBrightness = backend.readScreenBrightness();
             String backlightBrightness = backend.readBacklightBrightness();
             if (screenBrightness >= 0 || isValidBacklight(backlightBrightness)) {
                 backend.saveSnapshot(screenBrightness, backlightBrightness);
-                capturedSnapshot = true;
             }
         }
 
-        if (!backend.writeHbm(true)) {
-            if (capturedSnapshot) {
-                backend.clearSnapshot();
-            }
-            return false;
-        }
+        // Keep the original Tsaritsa behavior: sysfs writes are best-effort.
+        // Do not reject the preference change based on FileUtils.writeLine().
+        backend.writeHbm(true);
 
         backend.writeBacklight(MAX_BACKLIGHT);
         backend.writeScreenBrightness(MAX_SCREEN_BRIGHTNESS);
@@ -49,9 +44,9 @@ final class HBMControllerCore {
     }
 
     static boolean disable(Backend backend) {
-        if (!backend.writeHbm(false)) {
-            return false;
-        }
+        // Same as enable(): do not make the UI state depend on the return
+        // value of a sysfs write. Restore the saved brightness regardless.
+        backend.writeHbm(false);
 
         if (!backend.hasSnapshot()) {
             return true;
