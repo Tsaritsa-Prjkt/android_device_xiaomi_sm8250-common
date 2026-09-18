@@ -18,13 +18,12 @@ package org.lineageos.settings.dirac;
 
 import android.media.audiofx.AudioEffect;
 
-import java.util.UUID;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 public class DiracSound extends AudioEffect {
-
     public static final int EQ_BAND_COUNT = 10;
     private static final int MISOUND_PARAM_ENABLE = 25;
     private static final int DIRACSOUND_PARAM_HEADSET_TYPE = 1;
@@ -35,7 +34,6 @@ public class DiracSound extends AudioEffect {
 
     private static final UUID EFFECT_TYPE_DIRACSOUND =
             UUID.fromString("5b8e36a5-144a-4c38-b1d7-0002a5d5c51b");
-    private static final String TAG = "DiracSound";
 
     public DiracSound(int priority, int audioSession) {
         super(EFFECT_TYPE_NULL, EFFECT_TYPE_DIRACSOUND, priority, audioSession);
@@ -44,23 +42,70 @@ public class DiracSound extends AudioEffect {
     /** MiSound has a native enable gate separate from music mode and AudioEffect state. */
     @Override
     public int setEnabled(boolean enabled) {
-        // Stop Android processing first when disabling, even if the vendor write fails.
-        if (!enabled) checkStatus(super.setEnabled(false));
-        checkStatus(setParameter(MISOUND_PARAM_ENABLE, enabled ? 1 : 0));
-        if (!enabled) return SUCCESS;
-        int status = super.setEnabled(true);
+        if (!enabled) {
+            RuntimeException failure = null;
+            // Try both gates even if one fails. Never mask the first failure.
+            try {
+                checkStatus(super.setEnabled(false));
+            } catch (RuntimeException error) {
+                failure = error;
+            }
+            try {
+                checkStatus(setParameter(MISOUND_PARAM_ENABLE, 0));
+            } catch (RuntimeException error) {
+                if (failure == null) failure = error;
+                else if (failure != error) failure.addSuppressed(error);
+            }
+            if (failure != null) throw failure;
+            return SUCCESS;
+        }
+        checkStatus(setParameter(MISOUND_PARAM_ENABLE, 1));
+        final int status;
+        try {
+            status = super.setEnabled(true);
+        } catch (RuntimeException failure) {
+            rollbackEnable(failure);
+            throw failure;
+        }
         if (status != SUCCESS) {
-            // Do not leave the native gate enabled after a failed framework enable.
-            checkStatus(setParameter(MISOUND_PARAM_ENABLE, 0));
+            try {
+                checkStatus(setParameter(MISOUND_PARAM_ENABLE, 0));
+            } catch (RuntimeException rollback) {
+                IllegalStateException failure = new IllegalStateException(
+                        "Framework MiSound enable failed: " + status);
+                failure.addSuppressed(rollback);
+                throw failure;
+            }
         }
         return status;
     }
 
+    private void rollbackEnable(RuntimeException failure) {
+        try {
+            checkStatus(setParameter(MISOUND_PARAM_ENABLE, 0));
+        } catch (RuntimeException rollback) {
+            if (failure != rollback) failure.addSuppressed(rollback);
+        }
+    }
+
+    private int getIntParameter(int parameter) {
+        int[] value = new int[1];
+        int count = getParameter(parameter, value);
+        checkStatus(count);
+        // The int[] overload returns an element count, not a byte count.
+        if (count != 1) throw new IllegalStateException("Incomplete MiSound scalar: " + count);
+        return value[0];
+    }
+
     @Override
     public boolean getEnabled() {
-        int[] value = new int[1];
-        checkStatus(getParameter(MISOUND_PARAM_ENABLE, value));
-        return value[0] == 1 && super.getEnabled();
+        return getIntParameter(MISOUND_PARAM_ENABLE) == 1 && super.getEnabled();
+    }
+
+    /** A false conjunction alone cannot prove that BOTH processing gates are off. */
+    boolean hasExpectedEnabledState(boolean enabled) {
+        return getIntParameter(MISOUND_PARAM_ENABLE) == (enabled ? 1 : 0)
+                && super.getEnabled() == enabled;
     }
 
     /** Stock parameter 19 returns a little-endian count followed by headset IDs. */
@@ -68,12 +113,11 @@ public class DiracSound extends AudioEffect {
         byte[] reply = new byte[300];
         int size = getParameter(19, reply);
         checkStatus(size);
-        if (size < 4) return new int[0];
+        if (size < 4 || size > reply.length) return new int[0];
         ByteBuffer buffer = ByteBuffer.wrap(reply).order(ByteOrder.LITTLE_ENDIAN);
         int count = buffer.getInt();
-        if (count < 0 || count > (Math.min(size, reply.length) - 4) / 4) {
-            // Legacy alioth returns five bytes for a count of one, not a complete
-            // int32 ID. Do not infer capabilities from the zero-filled buffer tail.
+        if (count < 0 || count > (size - 4) / 4) {
+            // Legacy alioth's five-byte reply does not contain a complete int32 ID.
             return new int[0];
         }
         int[] ids = new int[count];
@@ -81,45 +125,31 @@ public class DiracSound extends AudioEffect {
         return ids;
     }
 
-    public int getMusic() throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
-        int[] value = new int[1];
-        checkStatus(getParameter(DIRACSOUND_PARAM_MUSIC, value));
-        return value[0];
+    public int getMusic() {
+        return getIntParameter(DIRACSOUND_PARAM_MUSIC);
     }
 
-    public void setMusic(int enable) throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
+    public void setMusic(int enable) {
         checkStatus(setParameter(DIRACSOUND_PARAM_MUSIC, enable));
     }
 
-    public void setHeadsetType(int type) throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
+    public void setHeadsetType(int type) {
         checkStatus(setParameter(DIRACSOUND_PARAM_HEADSET_TYPE, type));
     }
 
-    public void setLevel(int band, float level) throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
+    public void setLevel(int band, float level) {
         if (band < 0 || band >= EQ_BAND_COUNT) throw new IllegalArgumentException("Invalid EQ band");
         if (!Float.isFinite(level)) throw new IllegalArgumentException("Non-finite EQ level");
         checkStatus(setParameter(new int[]{DIRACSOUND_PARAM_EQ_LEVEL, band},
                 String.valueOf(level).getBytes(StandardCharsets.US_ASCII)));
     }
 
-    public void setHifiMode(int mode) throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
+    public void setHifiMode(int mode) {
         if (mode < 0 || mode > 1) throw new IllegalArgumentException("Invalid Hi-Fi mode");
         checkStatus(setParameter(DIRACSOUND_PARAM_HIFI, mode));
     }
 
-    public void setScenario(int scene) throws IllegalStateException,
-            IllegalArgumentException, UnsupportedOperationException,
-            RuntimeException {
+    public void setScenario(int scene) {
         if (scene < 0 || scene > 4) throw new IllegalArgumentException("Invalid scenario");
         checkStatus(setParameter(DIRACSOUND_PARAM_SCENE, scene));
     }

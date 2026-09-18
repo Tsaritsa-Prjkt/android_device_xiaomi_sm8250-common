@@ -35,10 +35,14 @@ public class DiracTileService extends TileService {
         Tile tile = getQsTile();
         if (tile == null) return;
         int state = Tile.STATE_UNAVAILABLE;
+        tile.setSubtitle(null);
         try {
             DiracUtils utils = DiracUtils.getInstance(getApplicationContext());
             if (utils.isAvailable()) {
-                state = utils.isDiracEnabled() ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE;
+                state = utils.isEnabledRequested() ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE;
+                if (utils.isPausedForCommunication()) {
+                    tile.setSubtitle(getString(R.string.dirac_paused_for_calls));
+                }
             }
         } catch (RuntimeException e) {
             Log.w(TAG, "Cannot read MiSound tile state", e);
@@ -50,10 +54,10 @@ public class DiracTileService extends TileService {
     @Override
     public void onClick() {
         super.onClick();
-        // Obtain the owner here too: a click must not depend on onStartListening's order.
+        // Toggle user intent, not temporary call bypass. A click during a call can turn it off.
         try {
             DiracUtils utils = DiracUtils.getInstance(getApplicationContext());
-            if (!utils.isAvailable() || !utils.setEnabled(!utils.isDiracEnabled())) {
+            if (!utils.isAvailable() || !utils.setEnabled(!utils.isEnabledRequested())) {
                 Toast.makeText(this, R.string.dirac_apply_failed, Toast.LENGTH_SHORT).show();
             }
         } catch (RuntimeException e) {

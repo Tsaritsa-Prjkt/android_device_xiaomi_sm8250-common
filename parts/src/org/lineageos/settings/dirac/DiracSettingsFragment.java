@@ -37,6 +37,8 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
     private ListPreference mPreset;
     private ListPreference mScenes;
     private SwitchPreferenceCompat mHifi;
+    private SwitchPreferenceCompat mEqualizer;
+    private SwitchPreferenceCompat mPauseDuringCalls;
     private DiracUtils mDiracUtils;
     private final Runnable mStateListener = this::updateState;
 
@@ -48,10 +50,13 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         mPreset = findPreference(DiracUtils.PREF_PRESET);
         mScenes = findPreference(DiracUtils.PREF_SCENE);
         mHifi = findPreference(DiracUtils.PREF_HIFI);
+        mEqualizer = findPreference(DiracUtils.PREF_EQ);
+        mPauseDuringCalls = findPreference(DiracUtils.PREF_PAUSE);
 
-        // DiracUtils persists only successfully applied values, including tile changes.
+        // The owner persists applied tuning and explicit Off recovery requests.
         for (Preference preference : new Preference[] {
-                mSwitchBar, mHeadsetType, mPreset, mScenes, mHifi}) {
+                mSwitchBar, mHeadsetType, mPreset, mScenes, mHifi,
+                mEqualizer, mPauseDuringCalls}) {
             preference.setPersistent(false);
             preference.setOnPreferenceChangeListener(this);
         }
@@ -77,11 +82,18 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
 
     private void updateState() {
         boolean available = mDiracUtils != null && mDiracUtils.isAvailable();
-        boolean enabled = available && mDiracUtils.isDiracEnabled();
-        mSwitchBar.setEnabled(available);
-        mSwitchBar.setChecked(enabled);
-        mSwitchBar.setSummary(available ? null : getString(R.string.dirac_unavailable));
+        boolean requested = mDiracUtils != null && mDiracUtils.isEnabledRequested();
+        boolean enabled = available && requested;
+        // Keep Off reachable after a failed restore; the unavailable summary remains.
+        mSwitchBar.setEnabled(available || requested);
+        mSwitchBar.setChecked(requested);
+        mSwitchBar.setSummary(!available ? getString(R.string.dirac_unavailable)
+                : mDiracUtils.isPausedForCommunication()
+                        ? getString(R.string.dirac_paused_for_calls) : null);
         mHifi.setVisible(mDiracUtils != null && mDiracUtils.isHifiSupported());
+        mPauseDuringCalls.setEnabled(available);
+        mEqualizer.setChecked(mDiracUtils != null && mDiracUtils.isEqualizerEnabled());
+        mPauseDuringCalls.setChecked(mDiracUtils != null && mDiracUtils.isPauseDuringCallsEnabled());
         setControlsEnabled(enabled);
         android.content.SharedPreferences prefs =
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(
@@ -122,7 +134,8 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
 
     private void setControlsEnabled(boolean enabled) {
         mHeadsetType.setEnabled(enabled);
-        mPreset.setEnabled(enabled);
+        mEqualizer.setEnabled(enabled);
+        mPreset.setEnabled(enabled && mDiracUtils != null && mDiracUtils.isEqualizerEnabled());
         mScenes.setEnabled(enabled);
         mHifi.setEnabled(enabled);
     }
@@ -137,6 +150,13 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
                         throw new IllegalStateException("MiSound toggle failed");
                     }
                     setControlsEnabled((Boolean) value);
+                    return true;
+                case DiracUtils.PREF_EQ:
+                    mDiracUtils.setEqualizerEnabled((Boolean) value);
+                    setControlsEnabled(mDiracUtils.isEnabledRequested());
+                    return true;
+                case DiracUtils.PREF_PAUSE:
+                    mDiracUtils.setPauseDuringCallsEnabled((Boolean) value);
                     return true;
                 case DiracUtils.PREF_HEADSET:
                     mDiracUtils.setHeadsetType(Integer.parseInt((String) value));
