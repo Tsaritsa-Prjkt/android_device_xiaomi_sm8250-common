@@ -140,7 +140,7 @@ public class DiracUtils {
     }
 
     private void applyEnabled(boolean enable) {
-        // Both the proprietary music parameter and AudioEffect state must agree.
+        // Music mode, native MiSound enable and Android effect state must agree.
         mSound.setMusic(enable ? 1 : 0);
         int status = mSound.setEnabled(enable);
         if (status != AudioEffect.SUCCESS) {
@@ -212,7 +212,14 @@ public class DiracUtils {
                 throw new IllegalArgumentException("Invalid MiSound band gain");
             }
         }
-        for (int band = 0; band < levels.length; band++) mSound.setLevel(band, levels[band]);
+        for (int band = 0; band < DiracSound.EQ_BAND_COUNT; band++) {
+            // Preserve existing seven-band presets; reset all unused native bands.
+            mSound.setLevel(band, band < levels.length ? levels[band] : 0f);
+        }
+    }
+
+    public synchronized int[] getSupportedHeadsets() {
+        return requireEffect().getHeadsetList();
     }
 
     public synchronized void setHeadsetType(int value) {
@@ -225,12 +232,21 @@ public class DiracUtils {
     }
 
     public synchronized void setHifiMode(int value) {
+        if (!isHifiSupported()) {
+            throw new UnsupportedOperationException("HAL Hi-Fi feature is disabled");
+        }
         requireEffect();
         applyHifi(value != 0);
         mPreferences.edit().putBoolean(PREF_HIFI, value != 0).apply();
     }
 
+    public boolean isHifiSupported() {
+        return android.os.SystemProperties.getBoolean(
+                "vendor.audio.feature.hifi_audio.enable", false);
+    }
+
     private void applyHifi(boolean enabled) {
+        if (!isHifiSupported()) return;
         mSound.setHifiMode(enabled ? 1 : 0);
         mAudioManager.setParameters("hifi_mode=" + enabled);
     }
