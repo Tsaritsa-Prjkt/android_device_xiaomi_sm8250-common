@@ -81,11 +81,27 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         mSwitchBar.setEnabled(available);
         mSwitchBar.setChecked(enabled);
         mSwitchBar.setSummary(available ? null : getString(R.string.dirac_unavailable));
+        if (available) {
+            mHeadsetType.setVisible(mDiracUtils.isHeadsetSupported());
+            mPreset.setVisible(mDiracUtils.isEqualizerSupported());
+            mScenes.setVisible(mDiracUtils.isScenarioSupported());
+            mHifi.setVisible(mDiracUtils.isHifiSupported());
+        } else {
+            // Keep non-Hi-Fi controls visible while the effect itself is unavailable so
+            // users can distinguish a temporary backend failure from missing features.
+            mHeadsetType.setVisible(true);
+            mPreset.setVisible(true);
+            mScenes.setVisible(true);
+            mHifi.setVisible(false);
+        }
         setControlsEnabled(enabled);
         android.content.SharedPreferences prefs =
                 androidx.preference.PreferenceManager.getDefaultSharedPreferences(
                         requireContext().createDeviceProtectedStorageContext());
-        if (available) {
+        // Restore the complete catalog if a later query is unavailable or malformed.
+        mHeadsetType.setEntries(R.array.dirac_headset_pref_entries);
+        mHeadsetType.setEntryValues(R.array.dirac_headset_pref_values);
+        if (available && mDiracUtils.isHeadsetSupported()) {
             try {
                 int[] supported = mDiracUtils.getSupportedHeadsets();
                 CharSequence[] names = getResources().getTextArray(R.array.dirac_headset_pref_entries);
@@ -117,10 +133,11 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
     }
 
     private void setControlsEnabled(boolean enabled) {
-        mHeadsetType.setEnabled(enabled);
-        mPreset.setEnabled(enabled);
-        mScenes.setEnabled(enabled);
-        mHifi.setEnabled(enabled);
+        boolean haveUtils = mDiracUtils != null;
+        mHeadsetType.setEnabled(enabled && haveUtils && mDiracUtils.isHeadsetSupported());
+        mPreset.setEnabled(enabled && haveUtils && mDiracUtils.isEqualizerSupported());
+        mScenes.setEnabled(enabled && haveUtils && mDiracUtils.isScenarioSupported());
+        mHifi.setEnabled(enabled && haveUtils && mDiracUtils.isHifiSupported());
     }
 
     @Override

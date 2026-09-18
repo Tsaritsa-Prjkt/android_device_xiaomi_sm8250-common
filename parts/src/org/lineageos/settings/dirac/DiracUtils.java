@@ -44,6 +44,10 @@ public class DiracUtils {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Set<Runnable> mListeners = new HashSet<>();
     private boolean mServerDown;
+    private boolean mHeadsetSupported;
+    private boolean mEqualizerSupported;
+    private boolean mScenarioSupported;
+    private boolean mHifiSupported;
     private DiracSound mSound;
     private int mRestoreAttempts;
     private final Runnable mRestore = this::restore;
@@ -118,6 +122,10 @@ public class DiracUtils {
             mSound.release();
             mSound = null;
         }
+        mHeadsetSupported = false;
+        mEqualizerSupported = false;
+        mScenarioSupported = false;
+        mHifiSupported = false;
     }
 
     private DiracSound requireEffect() {
@@ -127,15 +135,65 @@ public class DiracUtils {
             releaseEffect();
             mSound = new DiracSound(0, 0);
             if (!mSound.hasControl()) throw new IllegalStateException("MiSound control unavailable");
-            mSound.setHeadsetType(Integer.parseInt(mPreferences.getString(PREF_HEADSET, "0")));
-            applyLevel(mPreferences.getString(PREF_PRESET, "0,0,0,0,0,0,0"));
-            mSound.setScenario(Integer.parseInt(mPreferences.getString(PREF_SCENE, "4")));
-            applyHifi(mPreferences.getBoolean(PREF_HIFI, false));
+            restoreOptionalControls();
             applyEnabled(mPreferences.getBoolean(PREF_ENABLE, false));
             return mSound;
         } catch (RuntimeException e) {
             releaseEffect();
             throw e;
+        }
+    }
+
+
+    private void restoreOptionalControls() {
+        mHeadsetSupported = true;
+        mEqualizerSupported = true;
+        mScenarioSupported = true;
+        mHifiSupported = isHifiFeatureEnabled();
+
+        int preferredHeadset = Integer.parseInt(mPreferences.getString(PREF_HEADSET, "0"));
+        int[] supportedHeadsets = null;
+        try {
+            supportedHeadsets = mSound.getHeadsetList();
+        } catch (RuntimeException e) {
+            // Enumeration is optional. A legacy backend may still accept profile writes.
+            Log.w(TAG, "Cannot enumerate MiSound headsets; keeping configured catalog", e);
+        }
+
+        int selectedHeadset = MiSoundCapabilities.chooseHeadset(
+                preferredHeadset, supportedHeadsets);
+        try {
+            mSound.setHeadsetType(selectedHeadset);
+            if (selectedHeadset != preferredHeadset) {
+                mPreferences.edit().putString(
+                        PREF_HEADSET, Integer.toString(selectedHeadset)).apply();
+            }
+        } catch (RuntimeException e) {
+            mHeadsetSupported = false;
+            Log.w(TAG, "MiSound headset profiles are unsupported", e);
+        }
+
+        try {
+            applyLevel(mPreferences.getString(PREF_PRESET, "0,0,0,0,0,0,0"));
+        } catch (RuntimeException e) {
+            mEqualizerSupported = false;
+            Log.w(TAG, "MiSound equalizer is unsupported", e);
+        }
+
+        try {
+            mSound.setScenario(Integer.parseInt(mPreferences.getString(PREF_SCENE, "4")));
+        } catch (RuntimeException e) {
+            mScenarioSupported = false;
+            Log.w(TAG, "MiSound scenarios are unsupported", e);
+        }
+
+        if (mHifiSupported) {
+            try {
+                applyHifi(mPreferences.getBoolean(PREF_HIFI, false));
+            } catch (RuntimeException e) {
+                mHifiSupported = false;
+                Log.w(TAG, "MiSound Hi-Fi control is unsupported", e);
+            }
         }
     }
 
@@ -198,6 +256,9 @@ public class DiracUtils {
 
     public synchronized void setLevel(String preset) {
         requireEffect();
+        if (!mEqualizerSupported) {
+            throw new UnsupportedOperationException("MiSound equalizer is unavailable");
+        }
         applyLevel(preset);
         mPreferences.edit().putString(PREF_PRESET, preset).apply();
     }
@@ -219,11 +280,29 @@ public class DiracUtils {
     }
 
     public synchronized int[] getSupportedHeadsets() {
-        return requireEffect().getHeadsetList();
+        requireEffect();
+        if (!mHeadsetSupported) return new int[0];
+        return mSound.getHeadsetList();
+    }
+
+    public synchronized boolean isHeadsetSupported() {
+        return mHeadsetSupported;
+    }
+
+    public synchronized boolean isEqualizerSupported() {
+        return mEqualizerSupported;
+    }
+
+    public synchronized boolean isScenarioSupported() {
+        return mScenarioSupported;
     }
 
     public synchronized void setHeadsetType(int value) {
-        requireEffect().setHeadsetType(value);
+        requireEffect();
+        if (!mHeadsetSupported) {
+            throw new UnsupportedOperationException("MiSound headset profiles are unavailable");
+        }
+        mSound.setHeadsetType(value);
         mPreferences.edit().putString(PREF_HEADSET, Integer.toString(value)).apply();
     }
 
@@ -233,17 +312,34 @@ public class DiracUtils {
 
     public synchronized void setHifiMode(int value) {
         requireEffect();
+        if (!mHifiSupported) {
+            throw new UnsupportedOperationException("HAL Hi-Fi feature is disabled");
+        }
         applyHifi(value != 0);
         mPreferences.edit().putBoolean(PREF_HIFI, value != 0).apply();
     }
 
+    public synchronized boolean isHifiSupported() {
+        return mHifiSupported;
+    }
+
+    private boolean isHifiFeatureEnabled() {
+        return android.os.SystemProperties.getBoolean(
+                "vendor.audio.feature.hifi_audio.enable", false);
+    }
+
     private void applyHifi(boolean enabled) {
+        if (!isHifiFeatureEnabled()) return;
         mSound.setHifiMode(enabled ? 1 : 0);
         mAudioManager.setParameters("hifi_mode=" + enabled);
     }
 
     public synchronized void setScenario(int value) {
-        requireEffect().setScenario(value);
+        requireEffect();
+        if (!mScenarioSupported) {
+            throw new UnsupportedOperationException("MiSound scenarios are unavailable");
+        }
+        mSound.setScenario(value);
         mPreferences.edit().putString(PREF_SCENE, Integer.toString(value)).apply();
     }
 }

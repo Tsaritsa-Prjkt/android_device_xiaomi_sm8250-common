@@ -68,11 +68,13 @@ public class DiracSound extends AudioEffect {
         byte[] reply = new byte[300];
         int size = getParameter(19, reply);
         checkStatus(size);
-        if (size < 4) throw new IllegalStateException("Truncated MiSound headset list");
+        if (size < 4) return new int[0];
         ByteBuffer buffer = ByteBuffer.wrap(reply).order(ByteOrder.LITTLE_ENDIAN);
         int count = buffer.getInt();
         if (count < 0 || count > (Math.min(size, reply.length) - 4) / 4) {
-            throw new IllegalStateException("Invalid MiSound headset count");
+            // Some legacy backends return a truncated count-plus-ID payload.
+            // Do not infer capabilities from the zero-filled buffer tail.
+            return new int[0];
         }
         int[] ids = new int[count];
         for (int i = 0; i < count; i++) ids[i] = buffer.getInt();
