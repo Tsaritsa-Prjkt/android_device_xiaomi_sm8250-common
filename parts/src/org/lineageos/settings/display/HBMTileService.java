@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.display;
 
+import android.content.SharedPreferences;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import android.widget.Toast;
+
+import androidx.preference.PreferenceManager;
 
 import org.lineageos.settings.R;
 
@@ -11,7 +14,12 @@ public class HBMTileService extends TileService {
     private void updateUi() {
         Tile tile = getQsTile();
         if (tile == null) return;
-        if (!DisplayUtils.isHbmSupported()) {
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean autoEnabled = prefs.getBoolean(DisplayNodes.getAutoHbmEnableKey(), false);
+        boolean blocked = autoEnabled || DisplayUtils.isDcDimmingEnabled();
+
+        if (!DisplayUtils.isHbmSupported() || blocked) {
             tile.setState(Tile.STATE_UNAVAILABLE);
         } else {
             tile.setState(DisplayUtils.isHbmEnabled()
@@ -29,10 +37,14 @@ public class HBMTileService extends TileService {
     @Override
     public void onClick() {
         super.onClick();
-        if (!DisplayUtils.isHbmSupported()) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        if (!DisplayUtils.isHbmSupported()
+                || prefs.getBoolean(DisplayNodes.getAutoHbmEnableKey(), false)
+                || DisplayUtils.isDcDimmingEnabled()) {
             updateUi();
             return;
         }
+
         boolean enabled = !DisplayUtils.isHbmEnabled();
         if (!DisplayUtils.setHbm(this, enabled)) {
             Toast.makeText(this, R.string.parts_apply_failed, Toast.LENGTH_SHORT).show();
