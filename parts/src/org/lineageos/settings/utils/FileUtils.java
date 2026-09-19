@@ -31,6 +31,7 @@ import java.io.IOException;
 
 import org.lineageos.settings.hbm.HBMFragment;
 import org.lineageos.settings.hbm.AutoHBMService;
+import org.lineageos.settings.display.DisplayUtils;
 
 public final class FileUtils {
     private static final String TAG = "FileUtils";
@@ -199,9 +200,11 @@ public final class FileUtils {
     }
 
     public static void enableService(Context context) {
-        if (HBMFragment.isAUTOHBMEnabled(context) && !mServiceEnabled) {
+        boolean shouldRun = HBMFragment.isAUTOHBMEnabled(context)
+                && DisplayUtils.isHbmSupported();
+        if (shouldRun && !mServiceEnabled) {
             startService(context);
-        } else if (!HBMFragment.isAUTOHBMEnabled(context) && mServiceEnabled) {
+        } else if (!shouldRun && mServiceEnabled) {
             stopService(context);
         }
     }
