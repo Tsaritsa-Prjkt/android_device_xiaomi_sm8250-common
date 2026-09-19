@@ -86,9 +86,6 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
                 mDiracUtils != null && mDiracUtils.isPauseDuringCallsEnabled());
         setControlsEnabled(enabled);
 
-        android.content.SharedPreferences prefs =
-                androidx.preference.PreferenceManager.getDefaultSharedPreferences(
-                        requireContext().createDeviceProtectedStorageContext());
 
         mHeadsetType.setEntries(R.array.dirac_headset_pref_entries);
         mHeadsetType.setEntryValues(R.array.dirac_headset_pref_values);
@@ -118,10 +115,13 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
             }
         }
 
-        mHeadsetType.setValue(prefs.getString(DiracUtils.PREF_HEADSET, "0"));
-        mPreset.setValue(prefs.getString(DiracUtils.PREF_PRESET, "0,0,0,0,0,0,0"));
-        mScenes.setValue(prefs.getString(DiracUtils.PREF_SCENE, "4"));
-        mHifi.setChecked(prefs.getBoolean(DiracUtils.PREF_HIFI, false));
+        mHeadsetType.setValue(mDiracUtils == null ? "0"
+                : Integer.toString(mDiracUtils.getHeadsetType()));
+        mPreset.setValue(mDiracUtils == null ? "0,0,0,0,0,0,0"
+                : mDiracUtils.getSavedPreset());
+        mScenes.setValue(mDiracUtils == null ? "4"
+                : Integer.toString(mDiracUtils.getScenario()));
+        mHifi.setChecked(mDiracUtils != null && mDiracUtils.getHifiMode());
     }
 
     private void setControlsEnabled(boolean enabled) {

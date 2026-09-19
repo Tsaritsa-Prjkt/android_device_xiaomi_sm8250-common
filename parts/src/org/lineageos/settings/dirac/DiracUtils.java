@@ -298,11 +298,24 @@ public class DiracUtils {
         }
     }
 
+    // Share validation with the UI: an Off handle deliberately skips applySettings.
+    public synchronized int getHeadsetType() {
+        return safeIntString(PREF_HEADSET, "0", 0, 255);
+    }
+
+    public synchronized String getSavedPreset() {
+        return safePreset();
+    }
+
+    public synchronized int getScenario() {
+        return safeIntString(PREF_SCENE, "4", 0, 4);
+    }
+
     private void applySettings() {
-        mSound.setHeadsetType(safeIntString(PREF_HEADSET, "0", 0, 255));
-        applyLevel(safePreset(), isEqualizerEnabled());
-        mSound.setScenario(safeIntString(PREF_SCENE, "4", 0, 4));
-        applyHifi(safeBoolean(PREF_HIFI, false));
+        mSound.setHeadsetType(getHeadsetType());
+        applyLevel(getSavedPreset(), isEqualizerEnabled());
+        mSound.setScenario(getScenario());
+        applyHifi(getHifiMode());
     }
 
     private void applyEnabled(boolean enable) {
