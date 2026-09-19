@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/xp_background"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="82dp"
+        android:gravity="center_vertical" android:paddingStart="24dp" android:paddingEnd="24dp"
+        android:background="@drawable/xp_bg_header">
+        <ImageButton android:id="@+id/xp_back" android:layout_width="50dp" android:layout_height="50dp"
+            android:background="@android:color/transparent" android:padding="12dp"
+            android:src="@drawable/ic_xp_arrow_back" android:tint="@color/xp_on_surface_secondary"
+            android:contentDescription="@android:string/cancel" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="@string/gpu_manager_title" android:textColor="@color/xp_on_background"
+            android:textSize="25sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:fillViewport="true" android:clipToPadding="false" android:overScrollMode="never">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp" android:paddingBottom="40dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="170dp"
+                android:orientation="vertical" android:padding="22dp" android:background="@drawable/xp_bg_hero">
+                <TextView android:id="@+id/gpu_model" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:textColor="@color/xp_hero_text" android:textSize="27sp" android:textStyle="bold" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="18dp"
+                    android:background="@color/xp_accent_soft" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+                    android:gravity="center_vertical" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Load" android:textColor="@color/xp_on_accent_container" android:textSize="13sp" />
+                        <TextView android:id="@+id/gpu_load" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/xp_hero_text" android:textSize="24sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Temperature" android:textColor="@color/xp_on_accent_container" android:textSize="13sp" />
+                        <TextView android:id="@+id/gpu_temp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/xp_hero_text" android:textSize="24sp" android:textStyle="bold" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Current Frequency" android:textColor="@color/xp_on_accent_container" android:textSize="13sp" />
+                        <TextView android:id="@+id/gpu_freq" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/xp_hero_text" android:textSize="24sp" android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp"
+                android:layout_marginBottom="12dp" android:text="GPU Settings" android:textColor="@color/xp_accent" android:textSize="16sp" android:textStyle="bold" />
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+                android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Governor"
+                    android:textColor="@color/xp_on_background" android:textSize="22sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gpu_governor_active" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp" android:textColor="@color/xp_accent" android:textSize="15sp" />
+                <Spinner android:id="@+id/gpu_governor" android:layout_width="match_parent" android:layout_height="58dp"
+                    android:layout_marginTop="14dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
+                android:orientation="vertical" android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="GPU Frequencies"
+                    android:textColor="@color/xp_on_background" android:textSize="22sp" android:textStyle="bold" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Min" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/gpu_min" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Max" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/gpu_max" android:layout_width="match_parent" android:layout_height="58dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:layout_marginBottom="12dp"
+                android:text="Power Settings" android:textColor="@color/xp_accent" android:textSize="16sp" android:textStyle="bold" />
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <Switch android:id="@+id/gpu_force_clk" style="@style/XiaomiPartsSwitchCard" android:text="Force Clock On\nKeep GPU clock always on" />
+                <Switch android:id="@+id/gpu_force_bus" style="@style/XiaomiPartsSwitchCard" android:text="Force Bus On\nKeep GPU bus always on" />
+                <Switch android:id="@+id/gpu_force_rail" style="@style/XiaomiPartsSwitchCard" android:text="Force Rail On\nKeep GPU power rail always on" />
+                <Switch android:id="@+id/gpu_force_no_nap" style="@style/XiaomiPartsSwitchCard" android:text="Force No Nap\nDisable GPU napping between frames" />
+                <Switch android:id="@+id/gpu_bus_split" style="@style/XiaomiPartsSwitchCard" android:text="Bus Split\nEnable GPU bus splitting" />
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:layout_marginBottom="12dp"
+                android:text="Thermal Status" android:textColor="@color/xp_accent" android:textSize="16sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="94dp" android:gravity="center_vertical" android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Thermal Power Level" android:textColor="@color/xp_on_background" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Current thermal power level" android:textColor="@color/xp_on_surface_secondary" android:textSize="13sp" />
+                </LinearLayout>
+                <TextView android:id="@+id/gpu_thermal_level" android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingStart="16dp" android:paddingTop="8dp" android:paddingEnd="16dp" android:paddingBottom="8dp" android:background="@drawable/xp_bg_danger" android:textColor="@color/xp_on_danger" android:textStyle="bold" />
+            </LinearLayout>
+
+            <Switch android:id="@+id/gpu_apply_boot" style="@style/XiaomiPartsSwitchCard" android:layout_marginTop="16dp"
+                android:text="Apply on Boot\nAutomatically apply these settings when the device boots" />
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:gravity="end" android:orientation="horizontal">
+                <Button android:id="@+id/gpu_reset" android:layout_width="wrap_content" android:layout_height="56dp" android:text="Reset" android:textAllCaps="false" android:textColor="@color/xp_on_danger" android:background="@drawable/xp_bg_danger" />
+                <Button android:id="@+id/gpu_apply" android:layout_width="wrap_content" android:layout_height="56dp" android:layout_marginStart="12dp" android:text="Apply Settings" android:textAllCaps="false" android:textColor="@color/xp_on_background" android:background="@drawable/xp_bg_card_alt" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

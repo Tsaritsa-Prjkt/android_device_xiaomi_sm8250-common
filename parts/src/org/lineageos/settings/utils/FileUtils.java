@@ -18,7 +18,6 @@ package org.lineageos.settings.utils;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.UserHandle;
 
 import android.util.Log;
 
@@ -190,15 +189,13 @@ public final class FileUtils {
     private static boolean mServiceEnabled = false;
 
     private static void startService(Context context) {
-        context.startServiceAsUser(new Intent(context, AutoHBMService.class),
-                UserHandle.CURRENT);
+        context.startService(new Intent(context, AutoHBMService.class));
         mServiceEnabled = true;
     }
 
     private static void stopService(Context context) {
         mServiceEnabled = false;
-        context.stopServiceAsUser(new Intent(context, AutoHBMService.class),
-                UserHandle.CURRENT);
+        context.stopService(new Intent(context, AutoHBMService.class));
     }
 
     public static void enableService(Context context) {

@@ -1,84 +1,90 @@
-/*
- * Copyright (C) 2020 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+/* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.thermal;
 
-import android.app.ActivityManager;
 import android.app.ActivityTaskManager;
 import android.app.ActivityTaskManager.RootTaskInfo;
 import android.app.IActivityTaskManager;
-import android.app.TaskStackListener;
 import android.app.Service;
 import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Configuration;
+import android.hardware.display.DisplayManager;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.util.Log;
+import android.view.Display;
 
-public class ThermalService extends Service {
-
+public class ThermalService extends Service implements DisplayManager.DisplayListener {
     private static final String TAG = "ThermalService";
-    private static final boolean DEBUG = false;
 
     private boolean mScreenOn = true;
     private String mCurrentApp = "";
     private ThermalUtils mThermalUtils;
-
     private IActivityTaskManager mActivityTaskManager;
+    private DisplayManager mDisplayManager;
+    private boolean mReceiverRegistered;
 
-    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            switch (intent.getAction()) {
-                case Intent.ACTION_SCREEN_OFF:
-                    mScreenOn = false;
-                    setThermalProfile();
-                    break;
-                case Intent.ACTION_SCREEN_ON:
-                    mScreenOn = true;
-                    setThermalProfile();
-                    break;
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                mScreenOn = false;
+                mCurrentApp = "";
+                mThermalUtils.setDefaultThermalProfile();
+            } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                mScreenOn = true;
+                applyFocusedApp();
             }
-            mThermalUtils.resetTouchModes();
         }
     };
 
     @Override
     public void onCreate() {
-        if (DEBUG) Log.d(TAG, "Creating service");
+        super.onCreate();
+        mThermalUtils = new ThermalUtils(this);
+        mActivityTaskManager = ActivityTaskManager.getService();
         try {
-            mActivityTaskManager = ActivityTaskManager.getService();
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
         } catch (RemoteException e) {
-            // Do nothing
+            Log.w(TAG, "Unable to register task listener", e);
         }
-        mThermalUtils = new ThermalUtils(this);
-        registerReceiver();
-        super.onCreate();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        registerReceiver(mIntentReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        mReceiverRegistered = true;
+
+        mDisplayManager = getSystemService(DisplayManager.class);
+        if (mDisplayManager != null) {
+            mDisplayManager.registerDisplayListener(this, new Handler(Looper.getMainLooper()));
+        }
+        applyFocusedApp();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (DEBUG) Log.d(TAG, "Starting service");
+        applyFocusedApp();
         return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        mThermalUtils.setDefaultThermalProfile();
+        try {
+            if (mActivityTaskManager != null) {
+                mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
+            }
+        } catch (RemoteException e) {
+            Log.w(TAG, "Unable to unregister task listener", e);
+        }
+        if (mReceiverRegistered) unregisterReceiver(mIntentReceiver);
+        if (mDisplayManager != null) mDisplayManager.unregisterDisplayListener(this);
+        super.onDestroy();
     }
 
     @Override
@@ -86,23 +92,21 @@ public class ThermalService extends Service {
         return null;
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        mThermalUtils.updateTouchRotation();
-    }
-
-    private void registerReceiver() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        this.registerReceiver(mIntentReceiver, filter);
-    }
-
-    private void setThermalProfile() {
-        if (mScreenOn) {
-            mThermalUtils.setThermalProfile(mCurrentApp);
-        } else {
+    private void applyFocusedApp() {
+        if (!mScreenOn || mActivityTaskManager == null || mThermalUtils == null) return;
+        try {
+            RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
+            if (info == null || info.topActivity == null) {
+                mCurrentApp = "";
+                mThermalUtils.setDefaultThermalProfile();
+                return;
+            }
+            String packageName = info.topActivity.getPackageName();
+            mCurrentApp = packageName;
+            mThermalUtils.setThermalProfile(packageName);
+        } catch (RuntimeException | RemoteException e) {
+            Log.w(TAG, "Unable to resolve focused app", e);
+            mCurrentApp = "";
             mThermalUtils.setDefaultThermalProfile();
         }
     }
@@ -110,18 +114,15 @@ public class ThermalService extends Service {
     private final TaskStackListener mTaskListener = new TaskStackListener() {
         @Override
         public void onTaskStackChanged() {
-            try {
-                final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
-                if (info == null || info.topActivity == null) {
-                    return;
-                }
-
-                String foregroundApp = info.topActivity.getPackageName();
-                if (!foregroundApp.equals(mCurrentApp)) {
-                    mCurrentApp = foregroundApp;
-                    setThermalProfile();
-                }
-            } catch (Exception e) {}
+            applyFocusedApp();
         }
     };
+
+    @Override
+    public void onDisplayChanged(int displayId) {
+        if (displayId == Display.DEFAULT_DISPLAY) mThermalUtils.updateTouchRotation();
+    }
+
+    @Override public void onDisplayAdded(int displayId) {}
+    @Override public void onDisplayRemoved(int displayId) {}
 }

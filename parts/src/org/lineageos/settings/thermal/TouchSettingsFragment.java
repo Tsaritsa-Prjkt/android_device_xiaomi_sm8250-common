@@ -1,144 +1,113 @@
-/**
- * Copyright (C) 2020 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.thermal;
 
-import android.app.ActionBar;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.MenuItem;
 import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 
-import androidx.preference.PreferenceFragment;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
+import androidx.preference.SeekBarPreference;
 
 import com.android.settingslib.widget.MainSwitchPreference;
+import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 
 import org.lineageos.settings.R;
-import org.lineageos.settings.widget.SeekBarPreference;
 
-public class TouchSettingsFragment extends PreferenceFragment
-        implements SharedPreferences.OnSharedPreferenceChangeListener, OnCheckedChangeListener {
+public class TouchSettingsFragment extends SettingsBasePreferenceFragment
+        implements Preference.OnPreferenceChangeListener, CompoundButton.OnCheckedChangeListener {
 
     private SharedPreferences mSharedPrefs;
     private SeekBarPreference mTouchSensitivity;
     private SeekBarPreference mTouchResponse;
     private SeekBarPreference mTouchResistant;
     private MainSwitchPreference mGameMode;
-
-    private String packageName = "";
+    private String mPackageName = "";
+    private boolean mUpdating;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.xml.touch_settings);
-        mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+        mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(
+                requireContext().createDeviceProtectedStorageContext());
 
-        Bundle bundle = getArguments();
-        String appName = "";
-        if (bundle != null) {
-            appName = bundle.getString("appName", "");
-            packageName = bundle.getString("packageName", "");
-        }
+        Bundle args = getArguments();
+        if (args != null) mPackageName = args.getString("packageName", "");
+        requireActivity().setTitle(R.string.touch_control_title);
 
-        getActivity().setTitle(getResources().getString(R.string.touch_control_title));
+        mGameMode = findPreference(Constants.PREF_TOUCH_GAME_MODE);
+        mTouchResistant = findPreference(Constants.PREF_TOUCH_RESISTANT);
+        mTouchResponse = findPreference(Constants.PREF_TOUCH_RESPONSE);
+        mTouchSensitivity = findPreference(Constants.PREF_TOUCH_SENSITIVITY);
 
-        mGameMode = (MainSwitchPreference) findPreference(Constants.PREF_TOUCH_GAME_MODE);
+        mGameMode.setPersistent(false);
+        mTouchResistant.setPersistent(false);
+        mTouchResponse.setPersistent(false);
+        mTouchSensitivity.setPersistent(false);
+
         mGameMode.addOnSwitchChangeListener(this);
-
-        mTouchResistant = (SeekBarPreference) findPreference(Constants.PREF_TOUCH_RESISTANT);
-        mTouchResponse = (SeekBarPreference) findPreference(Constants.PREF_TOUCH_RESPONSE);
-        mTouchSensitivity = (SeekBarPreference) findPreference(Constants.PREF_TOUCH_SENSITIVITY);
-        updateDefaults();
+        mTouchResistant.setOnPreferenceChangeListener(this);
+        mTouchResponse.setOnPreferenceChangeListener(this);
+        mTouchSensitivity.setOnPreferenceChangeListener(this);
+        updateUi(readTuple());
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        mSharedPrefs.registerOnSharedPreferenceChangeListener(this);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mSharedPrefs.unregisterOnSharedPreferenceChangeListener(this);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            getActivity().onBackPressed();
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPrefs, String key) {
-        if (Constants.PREF_TOUCH_GAME_MODE.equals(key)) {
-            updateTouchModes(sharedPrefs.getBoolean(key, false) ? 1 : 0,
-                    Constants.TOUCH_GAME_MODE);
-        } else if (Constants.PREF_TOUCH_RESPONSE.equals(key)) {
-            updateTouchModes(sharedPrefs.getInt(key, 0), Constants.TOUCH_RESPONSE);
-        } else if (Constants.PREF_TOUCH_SENSITIVITY.equals(key)) {
-            updateTouchModes(sharedPrefs.getInt(key, 0), Constants.TOUCH_SENSITIVITY);
-        } else if (Constants.PREF_TOUCH_RESISTANT.equals(key)) {
-            updateTouchModes(sharedPrefs.getInt(key, 0), Constants.TOUCH_RESISTANT);
-        }
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+        int[] tuple = readTuple();
+        int value = (Integer) newValue;
+        if (preference == mTouchResponse) tuple[Constants.TOUCH_RESPONSE] = value;
+        else if (preference == mTouchSensitivity) tuple[Constants.TOUCH_SENSITIVITY] = value;
+        else if (preference == mTouchResistant) tuple[Constants.TOUCH_RESISTANT] = value;
+        else return false;
+        writeTuple(tuple);
+        ThermalUtils.startService(requireContext());
+        return true;
     }
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-        mGameMode.setChecked(isChecked);
-        mTouchSensitivity.setEnabled(isChecked);
-        mTouchResponse.setEnabled(isChecked);
-        mTouchResistant.setEnabled(isChecked);
+        if (mUpdating) return;
+        int[] tuple = readTuple();
+        tuple[Constants.TOUCH_GAME_MODE] = isChecked ? 1 : 0;
+        writeTuple(tuple);
+        setSlidersEnabled(isChecked);
+        ThermalUtils.startService(requireContext());
     }
 
-    private void updateDefaults() {
-        String[] values = getTouchValues().split(",");
-        boolean modeEnabled = Integer.parseInt(values[Constants.TOUCH_GAME_MODE]) == 1;
-        mGameMode.setChecked(modeEnabled);
-
-        mTouchSensitivity.setEnabled(modeEnabled);
-        mTouchResponse.setEnabled(modeEnabled);
-        mTouchResistant.setEnabled(modeEnabled);
-
-        mTouchResponse.setProgress(Integer.parseInt(values[Constants.TOUCH_RESPONSE]));
-        mTouchSensitivity.setProgress(Integer.parseInt(values[Constants.TOUCH_SENSITIVITY]));
-        mTouchResistant.setProgress(Integer.parseInt(values[Constants.TOUCH_RESISTANT]));
-    }
-
-    private void writeTouchValues(String modes) {
-        mSharedPrefs.edit().putString(packageName, modes).apply();
-    }
-
-    public String getTouchValues() {
-        String values = mSharedPrefs.getString(packageName, null);
-        if (values == null || values.isEmpty()) {
-            values = "0,0,0,0";
+    private int[] readTuple() {
+        String raw = mSharedPrefs.getString(mPackageName, "0,0,0,0");
+        String[] parts = raw == null ? new String[0] : raw.split(",", -1);
+        int[] out = new int[] {0, 0, 0, 0};
+        if (parts.length == 4) {
+            try {
+                for (int i = 0; i < 4; i++) out[i] = Integer.parseInt(parts[i].trim());
+            } catch (NumberFormatException ignored) {
+                out = new int[] {0, 0, 0, 0};
+            }
         }
-        writeTouchValues(values);
-        return values;
+        return out;
     }
 
-    public void updateTouchModes(int value, int mode) {
-        String[] values = getTouchValues().split(",");
-        values[mode] = String.valueOf(value);
-        String finalValues = values[Constants.TOUCH_GAME_MODE] + "," + values[Constants.TOUCH_RESPONSE] + ","
-                + values[Constants.TOUCH_SENSITIVITY] + "," + values[Constants.TOUCH_RESISTANT];
-        writeTouchValues(finalValues);
+    private void writeTuple(int[] tuple) {
+        String value = tuple[0] + "," + tuple[1] + "," + tuple[2] + "," + tuple[3];
+        mSharedPrefs.edit().putString(mPackageName, value).apply();
+    }
+
+    private void updateUi(int[] tuple) {
+        boolean enabled = tuple[Constants.TOUCH_GAME_MODE] == 1;
+        mUpdating = true;
+        mGameMode.setChecked(enabled);
+        mUpdating = false;
+        mTouchResponse.setValue(tuple[Constants.TOUCH_RESPONSE]);
+        mTouchSensitivity.setValue(tuple[Constants.TOUCH_SENSITIVITY]);
+        mTouchResistant.setValue(tuple[Constants.TOUCH_RESISTANT]);
+        setSlidersEnabled(enabled);
+    }
+
+    private void setSlidersEnabled(boolean enabled) {
+        mTouchResponse.setEnabled(enabled);
+        mTouchSensitivity.setEnabled(enabled);
+        mTouchResistant.setEnabled(enabled);
     }
 }

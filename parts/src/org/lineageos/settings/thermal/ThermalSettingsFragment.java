@@ -76,7 +76,6 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
 
         mApplicationsState = ApplicationsState.getInstance(getActivity().getApplication());
         mSession = mApplicationsState.newSession(this);
-        mSession.onResume();
         mActivityFilter = new ActivityFilter(getActivity().getPackageManager());
 
         mAllPackagesAdapter = new AllPackagesAdapter(getActivity());
@@ -103,16 +102,21 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
     @Override
     public void onResume() {
         super.onResume();
-        getActivity().setTitle(getResources().getString(R.string.thermal_title));
+        mSession.onResume();
+        requireActivity().setTitle(getResources().getString(R.string.thermal_title));
         rebuild();
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-
+    public void onPause() {
         mSession.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onDestroy() {
         mSession.onDestroy();
+        super.onDestroy();
     }
 
     @Override
@@ -284,17 +288,19 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            TextView view;
-            if (convertView != null) {
-                view = (TextView) convertView;
-            } else {
-                view = (TextView) inflater.inflate(android.R.layout.simple_spinner_dropdown_item,
-                        parent, false);
-            }
-
+            TextView view = convertView instanceof TextView
+                    ? (TextView) convertView
+                    : (TextView) inflater.inflate(R.layout.xp_spinner_item, parent, false);
             view.setText(items[position]);
-            view.setTextSize(14f);
+            return view;
+        }
 
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+            TextView view = convertView instanceof TextView
+                    ? (TextView) convertView
+                    : (TextView) inflater.inflate(R.layout.xp_spinner_dropdown_item, parent, false);
+            view.setText(items[position]);
             return view;
         }
     }
@@ -347,8 +353,8 @@ public class ThermalSettingsFragment extends SettingsBasePreferenceFragment
                     bundle.putString("appName", entry.label);
                     bundle.putString("packageName", entry.info.packageName);
                     touchSettingsFragment.setArguments(bundle);
-                    getActivity().getFragmentManager().beginTransaction()
-                            .replace(R.id.content_frame, touchSettingsFragment, "touchSettingsFragment")
+                    requireActivity().getSupportFragmentManager().beginTransaction()
+                            .replace(com.android.settingslib.collapsingtoolbar.R.id.content_frame, touchSettingsFragment, "touchSettingsFragment")
                             .addToBackStack(null)
                             .commit();
                 }

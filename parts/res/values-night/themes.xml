@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SubSettingsBase_v31" parent="Theme.SettingsBase_v31">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:navigationBarColor">@color/xp_background</item>
+        <item name="android:statusBarColor">@color/xp_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="colorControlNormal">@color/xp_on_surface_secondary</item>
+        <item name="colorAccent">@color/xp_accent</item>
+        <item name="alertDialogTheme">@style/Theme.AlertDialog.SettingsLib</item>
+    </style>
+
+    <style name="Theme.XiaomiParts.SubSettings" parent="Theme.SubSettingsBase_v31">
+        <item name="android:windowBackground">@color/xp_background</item>
+        <item name="android:colorAccent">@color/xp_accent</item>
+        <item name="android:textColorPrimary">@color/xp_on_background</item>
+        <item name="android:textColorSecondary">@color/xp_on_surface_secondary</item>
+        <item name="android:navigationBarColor">@color/xp_background</item>
+        <item name="android:statusBarColor">@color/xp_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+    <style name="Theme.XiaomiParts.Dashboard" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/xp_background</item>
+        <item name="android:colorAccent">@color/xp_accent</item>
+        <item name="android:textColorPrimary">@color/xp_on_background</item>
+        <item name="android:textColorSecondary">@color/xp_on_surface_secondary</item>
+        <item name="android:colorControlActivated">@color/xp_accent</item>
+        <item name="android:colorControlNormal">@color/xp_on_surface_secondary</item>
+        <item name="android:statusBarColor">@color/xp_surface</item>
+        <item name="android:navigationBarColor">@color/xp_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>
