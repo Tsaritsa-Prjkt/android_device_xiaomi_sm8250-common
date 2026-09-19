@@ -1,0 +1,4 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/xp_surface_alt" />
+    <corners android:radius="28dp" />
+</shape>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- XiaomiParts adaptive palette, DARK mode. -->
+    <color name="xp_background">@android:color/system_neutral1_900</color>
+    <color name="xp_surface">@android:color/system_neutral1_800</color>
+    <color name="xp_surface_alt">@android:color/system_neutral2_800</color>
+    <color name="xp_surface_high">@android:color/system_neutral2_700</color>
+
+    <!-- Material-style dark primary / containers from the active Monet palette. -->
+    <color name="xp_accent">@android:color/system_accent1_200</color>
+    <color name="xp_accent_soft">@android:color/system_accent1_100</color>
+    <color name="xp_accent_container">@android:color/system_accent1_700</color>
+    <color name="xp_on_accent">@android:color/system_accent1_800</color>
+    <color name="xp_on_accent_container">@android:color/system_accent1_100</color>
+
+    <color name="xp_on_background">@android:color/system_neutral1_100</color>
+    <color name="xp_on_surface">@android:color/system_neutral1_100</color>
+    <color name="xp_on_surface_secondary">@android:color/system_neutral2_300</color>
+    <color name="xp_outline">@android:color/system_neutral2_500</color>
+
+    <color name="xp_danger">#F2B8B5</color>
+    <color name="xp_on_danger">#601410</color>
+
+    <color name="xp_hero">@android:color/system_accent2_700</color>
+    <color name="xp_hero_text">@android:color/system_accent2_100</color>
+
+    <color name="xp_disabled_text">@android:color/system_neutral2_500</color>
+    <color name="disabled_text_color">@color/xp_disabled_text</color>
+</resources>

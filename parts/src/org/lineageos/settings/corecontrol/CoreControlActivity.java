@@ -1,32 +1,59 @@
-/*
- * Copyright (C) 2025 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+/* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.corecontrol;
 
+import android.app.Activity;
 import android.os.Bundle;
-import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
+import android.widget.Switch;
+import android.widget.Toast;
 
-public class CoreControlActivity extends CollapsingToolbarBaseActivity {
-    private static final String TAG_CORECONTROL = "corecontrol";
+import org.lineageos.settings.R;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+/** Screenshot-styled per-core control page. */
+public class CoreControlActivity extends Activity {
+    private final CoreControlUtils mUtils = new CoreControlUtils();
+    private Switch[] mSwitches;
+    private boolean mRefreshing;
+
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getFragmentManager().beginTransaction().replace(
-            com.android.settingslib.collapsingtoolbar.R.id.content_frame,
-            new CoreControlFragment(), TAG_CORECONTROL).commit();
+        setContentView(R.layout.activity_core_control);
+        findViewById(R.id.xp_back).setOnClickListener(v -> finish());
+
+        int[] ids = {
+                R.id.core_0_switch, R.id.core_1_switch, R.id.core_2_switch, R.id.core_3_switch,
+                R.id.core_4_switch, R.id.core_5_switch, R.id.core_6_switch, R.id.core_7_switch
+        };
+        mSwitches = new Switch[CoreControlUtils.NUM_CORES];
+        for (int i = 0; i < mSwitches.length; i++) {
+            final int core = i;
+            mSwitches[i] = findViewById(ids[i]);
+            mSwitches[i].setOnCheckedChangeListener((button, checked) -> {
+                if (mRefreshing) return;
+                if (!checked && !mUtils.canOffline(core)) {
+                    Toast.makeText(this, R.string.core_control_minimum_error, Toast.LENGTH_SHORT).show();
+                    refresh();
+                    return;
+                }
+                if (!mUtils.setCoreOnline(core, checked)) {
+                    Toast.makeText(this, R.string.parts_apply_failed, Toast.LENGTH_SHORT).show();
+                    refresh();
+                }
+            });
+        }
+        refresh();
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        refresh();
+    }
+
+    private void refresh() {
+        if (mSwitches == null) return;
+        mRefreshing = true;
+        for (int i = 0; i < mSwitches.length; i++) {
+            mSwitches[i].setChecked(mUtils.isCoreOnline(i));
+        }
+        mRefreshing = false;
     }
 }

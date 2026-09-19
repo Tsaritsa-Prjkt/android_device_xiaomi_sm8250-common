@@ -1,84 +1,73 @@
-/*
- * Copyright (C) 2025 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+/* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.charge;
 
-import android.database.ContentObserver;
-import android.net.Uri;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.Settings;
-import android.view.MenuItem;
-import com.android.settingslib.collapsingtoolbar.CollapsingToolbarBaseActivity;
+import android.widget.Switch;
+import android.widget.Toast;
 
-public class ChargeActivity extends CollapsingToolbarBaseActivity {
+import org.lineageos.settings.R;
 
-    private static final String TAG_BYPASS_CHARGE = "bypass_charge";
+/** Screenshot-styled direct bypass-charging control. */
+public class ChargeActivity extends Activity {
+    private ChargeUtils mUtils;
+    private Switch mSwitch;
+    private boolean mRefreshing;
 
-    private final ContentObserver mDevObserver =
-            new ContentObserver(new Handler(Looper.getMainLooper())) {
-        @Override
-        public void onChange(boolean selfChange) {
-            if (Settings.Global.getInt(
-                    getContentResolver(),
-                    Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 0) {
-                ChargeUtils chargeUtils = new ChargeUtils(ChargeActivity.this);
-                chargeUtils.enableBypassCharge(false);
-                finish();
-            }
-        }
-    };
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        if (Settings.Global.getInt(
-                getContentResolver(),
-                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 0) {
-            finish();
-            return;
-        }
-
-        getSupportFragmentManager().beginTransaction().replace(
-                com.android.settingslib.collapsingtoolbar.R.id.content_frame,
-                new ChargeSettingsFragment(),
-                TAG_BYPASS_CHARGE
-        ).commit();
-
-        getContentResolver().registerContentObserver(
-                Settings.Global.getUriFor(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED),
-                false,
-                mDevObserver
-        );
+        setContentView(R.layout.activity_bypass_charge);
+        findViewById(R.id.xp_back).setOnClickListener(v -> finish());
+        mUtils = new ChargeUtils(this);
+        mSwitch = findViewById(R.id.bypass_switch);
+        mSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (mRefreshing) return;
+            if (!checked) {
+                boolean ok = mUtils.setBypassChargeEnabled(false);
+                if (!ok) Toast.makeText(this, R.string.parts_apply_failed, Toast.LENGTH_SHORT).show();
+                refresh();
+                BypassChargeTileService.updateTile(this);
+                return;
+            }
+            ChargeUtils.SafetyCheckResult safety = mUtils.performSafetyChecks();
+            if (!safety.isSafe()) {
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.charge_bypass_title)
+                        .setMessage(getString(R.string.charge_bypass_safety_failed, safety.getReason()))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+                refresh();
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.charge_bypass_title)
+                    .setMessage(R.string.charge_bypass_warning)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        boolean ok = mUtils.setBypassChargeEnabled(true);
+                        if (!ok) Toast.makeText(this, R.string.parts_apply_failed, Toast.LENGTH_SHORT).show();
+                        refresh();
+                        BypassChargeTileService.updateTile(this);
+                    })
+                    .setNegativeButton(android.R.string.cancel, (dialog, which) -> refresh())
+                    .setOnCancelListener(dialog -> refresh())
+                    .show();
+            refresh();
+        });
+        refresh();
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        getContentResolver().unregisterContentObserver(mDevObserver);
+    @Override protected void onResume() {
+        super.onResume();
+        refresh();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            onBackPressed();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+    private void refresh() {
+        if (mSwitch == null) return;
+        mRefreshing = true;
+        boolean supported = mUtils.isBypassChargeSupported();
+        mSwitch.setEnabled(supported);
+        mSwitch.setChecked(supported && mUtils.isBypassChargeEnabled());
+        mRefreshing = false;
     }
 }
