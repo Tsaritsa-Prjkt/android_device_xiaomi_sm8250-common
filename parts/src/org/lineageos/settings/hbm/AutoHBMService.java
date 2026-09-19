@@ -48,8 +48,12 @@ public class AutoHBMService extends Service {
     private void deactivateLightSensorRead() {
         submit(() -> {
             if (mSensorManager != null) mSensorManager.unregisterListener(mSensorEventListener);
+            boolean wasAutoHbmActive = mAutoHbmActive;
             mAutoHbmActive = false;
-            DisplayUtils.setHbmTemporary(this, false);
+            if (wasAutoHbmActive) {
+                // setHbmTemporary() protects an explicit manual HBM request.
+                DisplayUtils.setHbmTemporary(AutoHBMService.this, false);
+            }
         });
     }
 
@@ -57,8 +61,16 @@ public class AutoHBMService extends Service {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event == null || event.values.length == 0) return;
+
             final float lux = event.values[0];
             mLastLux = lux;
+
+            // Manual HBM owns the hardware state. Auto HBM must not later turn it off.
+            if (DisplayUtils.isHbmManuallyRequested(AutoHBMService.this)) {
+                mAutoHbmActive = false;
+                return;
+            }
+
             KeyguardManager km = getSystemService(KeyguardManager.class);
             boolean keyguardShowing = km != null && km.isKeyguardLocked();
             float luxThreshold = parseFloatPreference(HBMFragment.KEY_AUTO_HBM_THRESHOLD, 7000f);
@@ -66,7 +78,8 @@ public class AutoHBMService extends Service {
 
             if (lux > luxThreshold) {
                 if ((!mAutoHbmActive || !DisplayUtils.isHbmEnabled(AutoHBMService.this))
-                        && !keyguardShowing && !DisplayUtils.isDcDimmingEnabled()) {
+                        && !keyguardShowing
+                        && !DisplayUtils.isDcDimmingEnabled(AutoHBMService.this)) {
                     if (DisplayUtils.setHbmTemporary(AutoHBMService.this, true)) {
                         mAutoHbmActive = true;
                     }
@@ -83,9 +96,13 @@ public class AutoHBMService extends Service {
                         Thread.currentThread().interrupt();
                         return;
                     }
+
                     if (mLastLux < thresholdAtSchedule && mAutoHbmActive) {
+                        // A manual request may have arrived while the delay was pending.
+                        if (!DisplayUtils.isHbmManuallyRequested(AutoHBMService.this)) {
+                            DisplayUtils.setHbmTemporary(AutoHBMService.this, false);
+                        }
                         mAutoHbmActive = false;
-                        DisplayUtils.setHbmTemporary(AutoHBMService.this, false);
                     }
                 });
             }
@@ -141,6 +158,10 @@ public class AutoHBMService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (!DisplayUtils.isHbmSupported()) {
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
         return START_STICKY;
     }
 
@@ -148,8 +169,11 @@ public class AutoHBMService extends Service {
     public void onDestroy() {
         unregisterReceiver(mScreenStateReceiver);
         if (mSensorManager != null) mSensorManager.unregisterListener(mSensorEventListener);
+        boolean wasAutoHbmActive = mAutoHbmActive;
         mAutoHbmActive = false;
-        DisplayUtils.setHbmTemporary(this, false);
+        if (wasAutoHbmActive) {
+            DisplayUtils.setHbmTemporary(this, false);
+        }
         if (mExecutorService != null) mExecutorService.shutdownNow();
         super.onDestroy();
     }
