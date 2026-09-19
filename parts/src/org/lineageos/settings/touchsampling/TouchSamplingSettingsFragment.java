@@ -10,6 +10,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 
 import org.lineageos.settings.R;
+import org.lineageos.settings.utils.FileUtils;
 
 public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragment implements
         Preference.OnPreferenceChangeListener {
@@ -22,7 +23,6 @@ public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragmen
         addPreferencesFromResource(R.xml.htsr_settings);
         mPreference = findPreference(HTSR_ENABLE_KEY);
         mPreference.setPersistent(false);
-        mPreference.setOnPreferenceChangeListener(this);
         refreshState();
     }
 
@@ -33,8 +33,11 @@ public class TouchSamplingSettingsFragment extends SettingsBasePreferenceFragmen
     }
 
     private void refreshState() {
-        boolean supported = TouchSamplingUtils.isSupported();
+        // Keep the kernel support check from commit 36f5794: the feature is supported
+        // when the kernel exposes the bump_sample_rate node.
+        boolean supported = FileUtils.fileExists(TouchSamplingUtils.HTSR_FILE);
         mPreference.setEnabled(supported);
+        mPreference.setOnPreferenceChangeListener(supported ? this : null);
         mPreference.setChecked(supported && TouchSamplingUtils.isEnabled(requireContext()));
         mPreference.setSummary(supported
                 ? R.string.htsr_enable_summary
