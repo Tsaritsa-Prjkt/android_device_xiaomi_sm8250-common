@@ -18,11 +18,13 @@ public final class TouchSamplingUtils {
     private TouchSamplingUtils() {}
 
     /**
-     * High-touch polling is controlled by a sysfs command node. Some kernels expose the
-     * node as write-only, so readability must not be used to decide whether it is supported.
+     * Kernel capability is defined by the bump_sample_rate sysfs node being present.
+     * Keep this aligned with the original XiaomiParts kernel support check: do not gate
+     * support on a Java writability pre-check, because access is mediated by platform/SELinux
+     * policy while the kernel ABI itself is advertised by the node's existence.
      */
     public static boolean isSupported() {
-        return FileUtils.isFileWritable(HTSR_FILE);
+        return FileUtils.fileExists(HTSR_FILE);
     }
 
     public static boolean isEnabled(Context context) {
@@ -42,7 +44,7 @@ public final class TouchSamplingUtils {
 
     public static boolean setEnabled(Context context, boolean enabled) {
         if (!isSupported()) {
-            Log.w(TAG, "High-touch polling node is not writable: " + HTSR_FILE);
+            Log.w(TAG, "High-touch polling node is not available: " + HTSR_FILE);
             return false;
         }
         if (!FileUtils.writeLine(HTSR_FILE, enabled ? "1" : "0")) {
