@@ -1,122 +1,95 @@
 /*
  * Copyright (C) 2025 KamiKaonashi
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package org.lineageos.settings.gpumanager;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
+
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
-import androidx.preference.PreferenceFragment;
-import androidx.preference.SwitchPreference;
+import androidx.preference.SwitchPreferenceCompat;
+
+import com.android.settingslib.widget.SettingsBasePreferenceFragment;
+
 import org.lineageos.settings.R;
 
-public class GpuManagerFragment extends PreferenceFragment
+public class GpuManagerFragment extends SettingsBasePreferenceFragment
         implements Preference.OnPreferenceChangeListener {
 
-    private static final String KEY_GPU_GOVERNOR = "gpu_governor";
-    private static final String KEY_GPU_MIN_FREQ = "gpu_min_freq";
-    private static final String KEY_GPU_MAX_FREQ = "gpu_max_freq";
     private static final String KEY_GPU_CURRENT_FREQ = "gpu_current_freq";
     private static final String KEY_GPU_MODEL = "gpu_model";
     private static final String KEY_GPU_BUSY_PERCENTAGE = "gpu_busy_percentage";
     private static final String KEY_GPU_TEMPERATURE = "gpu_temperature";
     private static final String KEY_GPU_THERMAL_PWRLEVEL = "gpu_thermal_pwrlevel";
-    private static final String KEY_GPU_FORCE_CLK_ON = "gpu_force_clk_on";
-    private static final String KEY_GPU_FORCE_BUS_ON = "gpu_force_bus_on";
-    private static final String KEY_GPU_FORCE_RAIL_ON = "gpu_force_rail_on";
-    private static final String KEY_GPU_FORCE_NO_NAP = "gpu_force_no_nap";
-    private static final String KEY_GPU_BUS_SPLIT = "gpu_bus_split";
     private static final String KEY_APPLY_GPU_SETTINGS = "apply_gpu_settings";
     private static final String KEY_RESET_GPU_SETTINGS = "reset_gpu_settings";
-    
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private GpuManagerUtils mGpuUtils;
-    private Handler mHandler;
     private Runnable mUpdateRunnable;
-    
-    // Preferences
+
     private ListPreference mGovernorPreference;
-    private ListPreference mMinFreqPreference, mMaxFreqPreference;
+    private ListPreference mMinFreqPreference;
+    private ListPreference mMaxFreqPreference;
     private Preference mCurrentFreqPreference;
     private Preference mGpuModelPreference;
     private Preference mGpuBusyPreference;
     private Preference mGpuTemperaturePreference;
     private Preference mThermalPowerLevelPreference;
-    private SwitchPreference mForceClkOnPreference;
-    private SwitchPreference mForceBusOnPreference;
-    private SwitchPreference mForceRailOnPreference;
-    private SwitchPreference mForceNoNapPreference;
-    private SwitchPreference mBusSplitPreference;
+    private SwitchPreferenceCompat mForceClkOnPreference;
+    private SwitchPreferenceCompat mForceBusOnPreference;
+    private SwitchPreferenceCompat mForceRailOnPreference;
+    private SwitchPreferenceCompat mForceNoNapPreference;
+    private SwitchPreferenceCompat mBusSplitPreference;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.gpu_manager_settings, rootKey);
         mGpuUtils = new GpuManagerUtils();
-        mHandler = new Handler();
-        
         initializePreferences();
         loadCurrentSettings();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
         startPeriodicUpdates();
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onPause() {
         stopPeriodicUpdates();
+        super.onPause();
     }
 
     private void initializePreferences() {
-        mGovernorPreference = (ListPreference) findPreference(KEY_GPU_GOVERNOR);
-        mMinFreqPreference = (ListPreference) findPreference(KEY_GPU_MIN_FREQ);
-        mMaxFreqPreference = (ListPreference) findPreference(KEY_GPU_MAX_FREQ);
+        mGovernorPreference = findPreference(GpuManagerUtils.PREF_GOVERNOR);
+        mMinFreqPreference = findPreference(GpuManagerUtils.PREF_MIN_FREQ);
+        mMaxFreqPreference = findPreference(GpuManagerUtils.PREF_MAX_FREQ);
         mCurrentFreqPreference = findPreference(KEY_GPU_CURRENT_FREQ);
         mGpuModelPreference = findPreference(KEY_GPU_MODEL);
         mGpuBusyPreference = findPreference(KEY_GPU_BUSY_PERCENTAGE);
         mGpuTemperaturePreference = findPreference(KEY_GPU_TEMPERATURE);
         mThermalPowerLevelPreference = findPreference(KEY_GPU_THERMAL_PWRLEVEL);
-        mForceClkOnPreference = (SwitchPreference) findPreference(KEY_GPU_FORCE_CLK_ON);
-        mForceBusOnPreference = (SwitchPreference) findPreference(KEY_GPU_FORCE_BUS_ON);
-        mForceRailOnPreference = (SwitchPreference) findPreference(KEY_GPU_FORCE_RAIL_ON);
-        mForceNoNapPreference = (SwitchPreference) findPreference(KEY_GPU_FORCE_NO_NAP);
-        mBusSplitPreference = (SwitchPreference) findPreference(KEY_GPU_BUS_SPLIT);
-        
-        // Set listeners
-        if (mGovernorPreference != null) {
-            mGovernorPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mMinFreqPreference != null) {
-            mMinFreqPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mMaxFreqPreference != null) {
-            mMaxFreqPreference.setOnPreferenceChangeListener(this);
-        }
-        
-        // Switch preferences
-        if (mForceClkOnPreference != null) {
-            mForceClkOnPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mForceBusOnPreference != null) {
-            mForceBusOnPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mForceRailOnPreference != null) {
-            mForceRailOnPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mForceNoNapPreference != null) {
-            mForceNoNapPreference.setOnPreferenceChangeListener(this);
-        }
-        if (mBusSplitPreference != null) {
-            mBusSplitPreference.setOnPreferenceChangeListener(this);
-        }
-        
-        // Apply and Reset buttons
+        mForceClkOnPreference = findPreference(GpuManagerUtils.PREF_FORCE_CLK_ON);
+        mForceBusOnPreference = findPreference(GpuManagerUtils.PREF_FORCE_BUS_ON);
+        mForceRailOnPreference = findPreference(GpuManagerUtils.PREF_FORCE_RAIL_ON);
+        mForceNoNapPreference = findPreference(GpuManagerUtils.PREF_FORCE_NO_NAP);
+        mBusSplitPreference = findPreference(GpuManagerUtils.PREF_BUS_SPLIT);
+
+        setListener(mGovernorPreference);
+        setListener(mMinFreqPreference);
+        setListener(mMaxFreqPreference);
+        setListener(mForceClkOnPreference);
+        setListener(mForceBusOnPreference);
+        setListener(mForceRailOnPreference);
+        setListener(mForceNoNapPreference);
+        setListener(mBusSplitPreference);
+
         Preference applyPref = findPreference(KEY_APPLY_GPU_SETTINGS);
         if (applyPref != null) {
             applyPref.setOnPreferenceClickListener(preference -> {
@@ -124,7 +97,7 @@ public class GpuManagerFragment extends PreferenceFragment
                 return true;
             });
         }
-        
+
         Preference resetPref = findPreference(KEY_RESET_GPU_SETTINGS);
         if (resetPref != null) {
             resetPref.setOnPreferenceClickListener(preference -> {
@@ -134,168 +107,142 @@ public class GpuManagerFragment extends PreferenceFragment
         }
     }
 
+    private void setListener(Preference preference) {
+        if (preference != null) preference.setOnPreferenceChangeListener(this);
+    }
+
     private void loadCurrentSettings() {
-        // Load GPU model
         if (mGpuModelPreference != null) {
-            String gpuModel = mGpuUtils.getGpuModel();
-            mGpuModelPreference.setSummary(gpuModel);
+            mGpuModelPreference.setSummary(mGpuUtils.getGpuModel());
         }
-        
-        // Load available governors
+
         String[] governors = mGpuUtils.getAvailableGovernors();
         if (governors != null && mGovernorPreference != null) {
             mGovernorPreference.setEntries(governors);
             mGovernorPreference.setEntryValues(governors);
-            String currentGovernor = mGpuUtils.getCurrentGovernor();
-            mGovernorPreference.setValue(currentGovernor);
-            mGovernorPreference.setSummary(getString(R.string.gpu_governor_summary, currentGovernor));
+            String current = mGpuUtils.getCurrentGovernor();
+            mGovernorPreference.setValue(current);
+            mGovernorPreference.setSummary(getString(R.string.gpu_governor_summary, current));
         }
-        
-        // Load available frequencies
+
         loadFrequencies();
-        
-        // Load switch states
         loadSwitchStates();
-        
-        // Update dynamic info
         updateDynamicInfo();
     }
 
     private void loadFrequencies() {
         String[] frequencies = mGpuUtils.getAvailableFrequencies();
-        if (frequencies != null) {
-            String[] frequencyLabels = new String[frequencies.length];
-            for (int i = 0; i < frequencies.length; i++) {
-                int freqMhz = Integer.parseInt(frequencies[i]) / 1000000;
-                frequencyLabels[i] = freqMhz + " MHz";
-            }
-            
-            if (mMinFreqPreference != null) {
-                mMinFreqPreference.setEntries(frequencyLabels);
-                mMinFreqPreference.setEntryValues(frequencies);
-                String currentMinFreq = mGpuUtils.getCurrentMinFrequency();
-                mMinFreqPreference.setValue(currentMinFreq);
-                int minFreqMhz = Integer.parseInt(currentMinFreq) / 1000000;
-                mMinFreqPreference.setSummary(minFreqMhz + " MHz");
-            }
-            
-            if (mMaxFreqPreference != null) {
-                mMaxFreqPreference.setEntries(frequencyLabels);
-                mMaxFreqPreference.setEntryValues(frequencies);
-                String currentMaxFreq = mGpuUtils.getCurrentMaxFrequency();
-                mMaxFreqPreference.setValue(currentMaxFreq);
-                int maxFreqMhz = Integer.parseInt(currentMaxFreq) / 1000000;
-                mMaxFreqPreference.setSummary(maxFreqMhz + " MHz");
-            }
+        if (frequencies == null || frequencies.length == 0) return;
+
+        String[] labels = new String[frequencies.length];
+        for (int i = 0; i < frequencies.length; i++) {
+            labels[i] = toGpuMhz(frequencies[i]) + " MHz";
+        }
+
+        if (mMinFreqPreference != null) {
+            mMinFreqPreference.setEntries(labels);
+            mMinFreqPreference.setEntryValues(frequencies);
+            String current = mGpuUtils.getCurrentMinFrequency();
+            mMinFreqPreference.setValue(current);
+            mMinFreqPreference.setSummary(toGpuMhz(current) + " MHz");
+        }
+
+        if (mMaxFreqPreference != null) {
+            mMaxFreqPreference.setEntries(labels);
+            mMaxFreqPreference.setEntryValues(frequencies);
+            String current = mGpuUtils.getCurrentMaxFrequency();
+            mMaxFreqPreference.setValue(current);
+            mMaxFreqPreference.setSummary(toGpuMhz(current) + " MHz");
         }
     }
 
     private void loadSwitchStates() {
-        if (mForceClkOnPreference != null) {
-            mForceClkOnPreference.setChecked(mGpuUtils.getForceClkOn());
-        }
-        if (mForceBusOnPreference != null) {
-            mForceBusOnPreference.setChecked(mGpuUtils.getForceBusOn());
-        }
-        if (mForceRailOnPreference != null) {
-            mForceRailOnPreference.setChecked(mGpuUtils.getForceRailOn());
-        }
-        if (mForceNoNapPreference != null) {
-            mForceNoNapPreference.setChecked(mGpuUtils.getForceNoNap());
-        }
-        if (mBusSplitPreference != null) {
-            mBusSplitPreference.setChecked(mGpuUtils.getBusSplit());
-        }
+        if (mForceClkOnPreference != null) mForceClkOnPreference.setChecked(mGpuUtils.getForceClkOn());
+        if (mForceBusOnPreference != null) mForceBusOnPreference.setChecked(mGpuUtils.getForceBusOn());
+        if (mForceRailOnPreference != null) mForceRailOnPreference.setChecked(mGpuUtils.getForceRailOn());
+        if (mForceNoNapPreference != null) mForceNoNapPreference.setChecked(mGpuUtils.getForceNoNap());
+        if (mBusSplitPreference != null) mBusSplitPreference.setChecked(mGpuUtils.getBusSplit());
     }
 
     private void updateDynamicInfo() {
-        // Update current frequency
         if (mCurrentFreqPreference != null) {
-            String currentFreq = mGpuUtils.getCurrentFrequency();
-            if (!currentFreq.equals("0")) {
-                int freqMhz = Integer.parseInt(currentFreq) / 1000000;
-                mCurrentFreqPreference.setSummary(freqMhz + " MHz");
-            } else {
-                mCurrentFreqPreference.setSummary("Unknown");
-            }
+            String value = mGpuUtils.getCurrentFrequency();
+            mCurrentFreqPreference.setSummary("0".equals(value)
+                    ? getString(R.string.unknown_value) : toGpuMhz(value) + " MHz");
         }
-        
-        // Update GPU busy percentage
         if (mGpuBusyPreference != null) {
-            String busyPercentage = mGpuUtils.getGpuBusyPercentage();
-            mGpuBusyPreference.setSummary(busyPercentage);
+            String busy = mGpuUtils.getGpuBusyPercentage();
+            mGpuBusyPreference.setSummary(busy.endsWith("%") ? busy : busy + "%");
         }
-        
-        // Update GPU temperature
         if (mGpuTemperaturePreference != null) {
-            String temperature = mGpuUtils.getGpuTemperature();
-            if (!temperature.equals("0")) {
-                mGpuTemperaturePreference.setSummary(temperature + "°C");
-            } else {
-                mGpuTemperaturePreference.setSummary("Unknown");
-            }
+            String temp = mGpuUtils.getGpuTemperature();
+            mGpuTemperaturePreference.setSummary("0".equals(temp)
+                    ? getString(R.string.unknown_value) : temp + "°C");
         }
-        
-        // Update thermal power level
         if (mThermalPowerLevelPreference != null) {
-            String thermalLevel = mGpuUtils.getThermalPowerLevel();
-            mThermalPowerLevelPreference.setSummary("Level " + thermalLevel);
+            mThermalPowerLevelPreference.setSummary(
+                    getString(R.string.gpu_thermal_level_value, mGpuUtils.getThermalPowerLevel()));
         }
     }
 
     private void startPeriodicUpdates() {
+        stopPeriodicUpdates();
         mUpdateRunnable = new Runnable() {
             @Override
             public void run() {
+                if (!isAdded()) return;
                 updateDynamicInfo();
-                mHandler.postDelayed(this, 2000); // Update every 2 seconds
+                mHandler.postDelayed(this, 2000);
             }
         };
         mHandler.post(mUpdateRunnable);
     }
 
     private void stopPeriodicUpdates() {
-        if (mHandler != null && mUpdateRunnable != null) {
-            mHandler.removeCallbacks(mUpdateRunnable);
-        }
+        if (mUpdateRunnable != null) mHandler.removeCallbacks(mUpdateRunnable);
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         String key = preference.getKey();
-        
-        if (KEY_GPU_GOVERNOR.equals(key)) {
-            String value = (String) newValue;
-            mGovernorPreference.setSummary(getString(R.string.gpu_governor_summary, value));
-            return true;
-        } else if (KEY_GPU_MIN_FREQ.equals(key) || KEY_GPU_MAX_FREQ.equals(key)) {
-            String value = (String) newValue;
-            int freqMhz = Integer.parseInt(value) / 1000000;
-            preference.setSummary(freqMhz + " MHz");
-            return true;
+        if (GpuManagerUtils.PREF_GOVERNOR.equals(key)) {
+            preference.setSummary(getString(R.string.gpu_governor_summary, String.valueOf(newValue)));
+        } else if (GpuManagerUtils.PREF_MIN_FREQ.equals(key)
+                || GpuManagerUtils.PREF_MAX_FREQ.equals(key)) {
+            preference.setSummary(toGpuMhz(String.valueOf(newValue)) + " MHz");
         }
-        
+        // Power switches are staged until Apply Settings, matching the screenshot flow.
         return true;
     }
 
     private void applySettings() {
-        // Apply governor
+        boolean ok = true;
         if (mGovernorPreference != null) {
-            String governor = mGovernorPreference.getValue();
-            mGpuUtils.setGovernor(governor);
+            ok &= mGpuUtils.setGovernor(mGovernorPreference.getValue());
         }
-        
-        // Apply frequencies
         if (mMinFreqPreference != null && mMaxFreqPreference != null) {
-            mGpuUtils.setFrequencyRange(mMinFreqPreference.getValue(), mMaxFreqPreference.getValue());
+            ok &= mGpuUtils.setFrequencyRange(
+                    mMinFreqPreference.getValue(), mMaxFreqPreference.getValue());
         }
-        
-        Toast.makeText(getContext(), R.string.settings_applied, Toast.LENGTH_SHORT).show();
+        if (mForceClkOnPreference != null) ok &= mGpuUtils.setForceClkOn(mForceClkOnPreference.isChecked());
+        if (mForceBusOnPreference != null) ok &= mGpuUtils.setForceBusOn(mForceBusOnPreference.isChecked());
+        if (mForceRailOnPreference != null) ok &= mGpuUtils.setForceRailOn(mForceRailOnPreference.isChecked());
+        if (mForceNoNapPreference != null) ok &= mGpuUtils.setForceNoNap(mForceNoNapPreference.isChecked());
+        if (mBusSplitPreference != null) ok &= mGpuUtils.setBusSplit(mBusSplitPreference.isChecked());
+
+        Toast.makeText(requireContext(), ok ? R.string.settings_applied : R.string.settings_apply_failed,
+                Toast.LENGTH_SHORT).show();
+        if (!ok) loadCurrentSettings();
     }
 
     private void resetSettings() {
-        mGpuUtils.resetToDefaults();
+        boolean ok = mGpuUtils.resetToDefaults();
         loadCurrentSettings();
-        Toast.makeText(getContext(), R.string.settings_reset, Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(), ok ? R.string.settings_reset : R.string.settings_apply_failed,
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private static long toGpuMhz(String hz) {
+        try { return Long.parseLong(hz) / 1_000_000L; } catch (RuntimeException e) { return 0; }
     }
 }

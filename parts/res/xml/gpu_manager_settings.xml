@@ -42,23 +42,23 @@
 
     <!-- Power Settings -->
     <PreferenceCategory android:title="@string/gpu_power_title">
-        <SwitchPreference
+        <androidx.preference.SwitchPreferenceCompat
             android:key="gpu_force_clk_on"
             android:title="@string/gpu_force_clk_on_title"
             android:summary="@string/gpu_force_clk_on_summary" />
-        <SwitchPreference
+        <androidx.preference.SwitchPreferenceCompat
             android:key="gpu_force_bus_on"
             android:title="@string/gpu_force_bus_on_title"
             android:summary="@string/gpu_force_bus_on_summary" />
-        <SwitchPreference
+        <androidx.preference.SwitchPreferenceCompat
             android:key="gpu_force_rail_on"
             android:title="@string/gpu_force_rail_on_title"
             android:summary="@string/gpu_force_rail_on_summary" />
-        <SwitchPreference
+        <androidx.preference.SwitchPreferenceCompat
             android:key="gpu_force_no_nap"
             android:title="@string/gpu_force_no_nap_title"
             android:summary="@string/gpu_force_no_nap_summary" />
-        <SwitchPreference
+        <androidx.preference.SwitchPreferenceCompat
             android:key="gpu_bus_split"
             android:title="@string/gpu_bus_split_title"
             android:summary="@string/gpu_bus_split_summary" />
@@ -74,14 +74,18 @@
     </PreferenceCategory>
 
     <PreferenceCategory>
+        <androidx.preference.SwitchPreferenceCompat
+            android:key="gpu_apply_on_boot"
+            android:title="@string/apply_on_boot_title"
+            android:summary="@string/apply_on_boot_summary" />
         <Preference
             android:key="apply_gpu_settings"
             android:title="@string/apply_settings"
-            android:summary="Apply current GPU settings" />
+            android:summary="@string/apply_gpu_settings_summary" />
         <Preference
             android:key="reset_gpu_settings"
             android:title="@string/reset_settings"
-            android:summary="Reset all GPU settings to default values" />
+            android:summary="@string/reset_gpu_settings_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/kernel_info_category">
