@@ -8,17 +8,21 @@ public final class DisplayNodes {
     private static final String DC_DIMMING_ENABLE_KEY = "dc_dimming_enable";
     private static final String HBM_ENABLE_KEY = "hbm";
 
-    // Main sm8250-common/alioth paths used by this tree.
-    private static final String DC_DIMMING_NODE =
+    /*
+     * Keep the original alioth/sm8250 XiaomiParts ABI first. These nodes are the
+     * paths used by the existing kernel/device-tree implementation and are the
+     * safest contract for POCO F3 / Mi 11X / Redmi K40.
+     */
+    private static final String DC_DIMMING_LEGACY_NODE =
+            "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/msm_fb_ea_enable";
+    private static final String HBM_DIRECT_NODE =
+            "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/hbm";
+
+    /* Optional fallbacks used by kernels exposing the newer display interfaces. */
+    private static final String DC_DIMMING_ALT_NODE =
             "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/dimlayer_exposure";
     private static final String HBM_COMMAND_NODE =
             "/sys/class/drm/card0/card0-DSI-1/disp_param";
-
-    // Fallbacks used by some sm8250 kernels while keeping the same UI implementation.
-    private static final String DC_DIMMING_FALLBACK =
-            "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/msm_fb_ea_enable";
-    private static final String HBM_DIRECT_FALLBACK =
-            "/sys/devices/platform/soc/soc:qcom,dsi-display-primary/hbm";
 
     private static final String BACKLIGHT =
             "/sys/class/backlight/panel0-backlight/brightness";
@@ -35,14 +39,17 @@ public final class DisplayNodes {
         return HBM_ENABLE_KEY;
     }
 
+    /**
+     * Prefer a node XiaomiParts can actually write. Merely existing is not enough:
+     * some DRM nodes are visible to apps but intentionally not writable from the
+     * system-app domain, which previously made the UI report a false unsupported state.
+     */
     public static String getDcDimmingNode() {
-        if (FileUtils.fileExists(DC_DIMMING_NODE)) return DC_DIMMING_NODE;
-        return DC_DIMMING_FALLBACK;
+        return firstWritableOrExisting(DC_DIMMING_LEGACY_NODE, DC_DIMMING_ALT_NODE);
     }
 
     public static String getHbmNode() {
-        if (FileUtils.fileExists(HBM_COMMAND_NODE)) return HBM_COMMAND_NODE;
-        return HBM_DIRECT_FALLBACK;
+        return firstWritableOrExisting(HBM_DIRECT_NODE, HBM_COMMAND_NODE);
     }
 
     public static boolean usesHbmCommandAbi() {
@@ -63,5 +70,16 @@ public final class DisplayNodes {
 
     public static String getBacklightMax() {
         return BACKLIGHT_MAX;
+    }
+
+    private static String firstWritableOrExisting(String... candidates) {
+        for (String candidate : candidates) {
+            if (FileUtils.isFileWritable(candidate)) return candidate;
+        }
+        for (String candidate : candidates) {
+            if (FileUtils.fileExists(candidate)) return candidate;
+        }
+        // Return the canonical path for deterministic diagnostics on unsupported kernels.
+        return candidates[0];
     }
 }

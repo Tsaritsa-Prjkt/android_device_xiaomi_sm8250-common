@@ -48,7 +48,7 @@ public class HBMFragment extends SettingsBasePreferenceFragment
     private void refreshState() {
         if (mHbmSwitch != null) {
             boolean supported = DisplayUtils.isHbmSupported();
-            mHbmSwitch.setEnabled(supported && !DisplayUtils.isDcDimmingEnabled());
+            mHbmSwitch.setEnabled(supported);
             mHbmSwitch.setChecked(supported && DisplayUtils.isHbmEnabled(requireContext()));
         }
         if (mAutoHbmSwitch != null) {

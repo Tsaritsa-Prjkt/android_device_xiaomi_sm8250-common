@@ -36,7 +36,7 @@ public class DcDimmingSettingsFragment extends SettingsBasePreferenceFragment im
         if (mPreference == null) return;
         boolean supported = DisplayUtils.isDcDimmingSupported();
         mPreference.setEnabled(supported);
-        mPreference.setChecked(supported && DisplayUtils.isDcDimmingEnabled());
+        mPreference.setChecked(supported && DisplayUtils.isDcDimmingEnabled(requireContext()));
         if (!supported) {
             mPreference.setSummary(R.string.dc_dimming_enable_summary_not_supported);
         } else {
