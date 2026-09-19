@@ -36,7 +36,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.preference.PreferenceFragment;
+import com.android.settingslib.widget.SettingsBasePreferenceFragment;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -50,7 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RefreshSettingsFragment extends PreferenceFragment
+public class RefreshSettingsFragment extends SettingsBasePreferenceFragment
     implements ApplicationsState.Callbacks {
 
     private AllPackagesAdapter mAllPackagesAdapter;
@@ -73,7 +73,6 @@ public class RefreshSettingsFragment extends PreferenceFragment
 
         mApplicationsState = ApplicationsState.getInstance(getActivity().getApplication());
         mSession = mApplicationsState.newSession(this);
-        mSession.onResume();
         mActivityFilter = new ActivityFilter(getActivity().getPackageManager());
 
         mAllPackagesAdapter = new AllPackagesAdapter(getActivity());
@@ -100,16 +99,21 @@ public class RefreshSettingsFragment extends PreferenceFragment
     @Override
     public void onResume() {
         super.onResume();
-        getActivity().setTitle(getResources().getString(R.string.refresh_title));
+        mSession.onResume();
+        requireActivity().setTitle(getResources().getString(R.string.refresh_title));
         rebuild();
     }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-
+    public void onPause() {
         mSession.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onDestroy() {
         mSession.onDestroy();
+        super.onDestroy();
     }
 
     @Override
@@ -253,17 +257,19 @@ public class RefreshSettingsFragment extends PreferenceFragment
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            TextView view;
-            if (convertView != null) {
-                view = (TextView) convertView;
-            } else {
-                view = (TextView) inflater.inflate(android.R.layout.simple_spinner_dropdown_item,
-                        parent, false);
-            }
-
+            TextView view = convertView instanceof TextView
+                    ? (TextView) convertView
+                    : (TextView) inflater.inflate(R.layout.xp_spinner_item, parent, false);
             view.setText(items[position]);
-            view.setTextSize(14f);
+            return view;
+        }
 
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+            TextView view = convertView instanceof TextView
+                    ? (TextView) convertView
+                    : (TextView) inflater.inflate(R.layout.xp_spinner_dropdown_item, parent, false);
+            view.setText(items[position]);
             return view;
         }
     }

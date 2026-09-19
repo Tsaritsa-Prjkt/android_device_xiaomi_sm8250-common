@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/xp_background" android:fitsSystemWindows="true">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="82dp" android:gravity="center_vertical"
+        android:paddingStart="24dp" android:paddingEnd="24dp" android:background="@drawable/xp_bg_header">
+        <ImageButton android:id="@+id/xp_back" android:layout_width="50dp" android:layout_height="50dp"
+            android:background="@android:color/transparent" android:padding="12dp" android:src="@drawable/ic_xp_arrow_back"
+            android:tint="@color/xp_on_surface_secondary" android:contentDescription="@android:string/cancel" />
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="@string/kernel_manager_title" android:textColor="@color/xp_on_background" android:textSize="25sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:fillViewport="true" android:clipToPadding="false" android:overScrollMode="never">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+            android:padding="24dp" android:paddingBottom="42dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+                android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CPU Governor"
+                    android:textColor="@color/xp_on_background" android:textSize="23sp" android:textStyle="bold" />
+                <TextView android:id="@+id/kernel_governor_active" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp" android:textColor="@color/xp_accent" android:textSize="15sp" />
+                <Spinner android:id="@+id/kernel_governor" android:layout_width="match_parent" android:layout_height="60dp"
+                    android:layout_marginTop="16dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
+                android:orientation="vertical" android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Efficiency Cluster"
+                    android:textColor="@color/xp_on_background" android:textSize="23sp" android:textStyle="bold" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Min" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/kernel_eff_min" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Max" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/kernel_eff_max" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
+                android:orientation="vertical" android:padding="20dp" android:background="@drawable/xp_bg_card">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Performance Cluster"
+                    android:textColor="@color/xp_on_background" android:textSize="23sp" android:textStyle="bold" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:orientation="horizontal">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Min" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/kernel_perf_min" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Max" android:textColor="@color/xp_on_surface_secondary" />
+                        <Spinner android:id="@+id/kernel_perf_max" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="6dp" android:background="@drawable/xp_bg_spinner" android:popupBackground="@color/xp_surface_alt" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <Switch android:id="@+id/kernel_apply_boot" style="@style/XiaomiPartsSwitchCard" android:layout_marginTop="16dp"
+                android:text="Apply on Boot\nAutomatically apply these settings when the device boots" />
+
+            <Button android:id="@+id/kernel_reset" android:layout_width="match_parent" android:layout_height="76dp" android:layout_marginTop="16dp"
+                android:text="Reset to Defaults\nRestore original kernel configurations" android:textAllCaps="false"
+                android:textColor="@color/xp_on_danger" android:textSize="18sp" android:textStyle="bold" android:gravity="center_vertical|start"
+                android:paddingStart="22dp" android:background="@drawable/xp_bg_danger" />
+
+            <Button android:id="@+id/kernel_apply" android:layout_width="wrap_content" android:layout_height="58dp" android:layout_gravity="end"
+                android:layout_marginTop="20dp" android:text="Apply Settings" android:textAllCaps="false" android:textColor="@color/xp_on_background"
+                android:textStyle="bold" android:background="@drawable/xp_bg_card_alt" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
