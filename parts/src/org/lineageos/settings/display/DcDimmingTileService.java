@@ -16,7 +16,7 @@ public class DcDimmingTileService extends TileService {
         if (!DisplayUtils.isDcDimmingSupported()) {
             tile.setState(Tile.STATE_UNAVAILABLE);
         } else {
-            tile.setState(DisplayUtils.isDcDimmingEnabled()
+            tile.setState(DisplayUtils.isDcDimmingEnabled(this)
                     ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         }
         tile.updateTile();
@@ -35,7 +35,7 @@ public class DcDimmingTileService extends TileService {
             updateUi();
             return;
         }
-        boolean enabled = !DisplayUtils.isDcDimmingEnabled();
+        boolean enabled = !DisplayUtils.isDcDimmingEnabled(this);
         if (!DisplayUtils.setDcDimming(this, enabled)) {
             Toast.makeText(this, R.string.parts_apply_failed, Toast.LENGTH_SHORT).show();
         }
