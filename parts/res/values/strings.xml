@@ -195,10 +195,10 @@
     <string name="core_1">Core 1</string>
     <string name="core_2">Core 2</string>
     <string name="core_3">Core 3</string>
-    <string name="core_4">Core 4</string>
-    <string name="core_5">Core 5</string>
+    <string name="core_4">Core 4 (Big)</string>
+    <string name="core_5">Core 5 (Big)</string>
     <string name="core_6">Core 6 (Big)</string>
-    <string name="core_7">Core 7 (Big)</string>
+    <string name="core_7">Core 7 (Prime)</string>
 
     <!-- Kernel Manager -->
     <string name="kernel_manager_title">Kernel Manager</string>

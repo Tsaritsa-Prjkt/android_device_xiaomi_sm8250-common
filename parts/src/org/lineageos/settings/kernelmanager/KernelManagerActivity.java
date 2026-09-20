@@ -58,15 +58,15 @@ public class KernelManagerActivity extends Activity {
         bind(mGovernor, mGovernors, mGovernors,
                 mUtils.getCurrentGovernor(KernelManagerUtils.EFFICIENCY_CLUSTER));
 
-        mEffValues = safe(mUtils.getAvailableFrequencies(KernelManagerUtils.EFFICIENCY_CLUSTER));
+        mEffValues = safe(mUtils.getEfficiencyUiFrequencies());
         String[] effLabels = labels(mEffValues);
         bind(mEffMin, effLabels, mEffValues, mUtils.getCurrentMinFrequency(KernelManagerUtils.EFFICIENCY_CLUSTER));
         bind(mEffMax, effLabels, mEffValues, mUtils.getCurrentMaxFrequency(KernelManagerUtils.EFFICIENCY_CLUSTER));
 
-        mPerfValues = safe(mUtils.getAvailableFrequencies(KernelManagerUtils.PERFORMANCE_CLUSTER));
+        mPerfValues = safe(mUtils.getPerformanceUiFrequencies());
         String[] perfLabels = labels(mPerfValues);
-        bind(mPerfMin, perfLabels, mPerfValues, mUtils.getCurrentMinFrequency(KernelManagerUtils.PERFORMANCE_CLUSTER));
-        bind(mPerfMax, perfLabels, mPerfValues, mUtils.getCurrentMaxFrequency(KernelManagerUtils.PERFORMANCE_CLUSTER));
+        bind(mPerfMin, perfLabels, mPerfValues, mUtils.getPerformanceCurrentMinFrequency());
+        bind(mPerfMax, perfLabels, mPerfValues, mUtils.getPerformanceCurrentMaxFrequency());
         updateActiveGovernor();
     }
 
@@ -75,6 +75,7 @@ public class KernelManagerActivity extends Activity {
         adapter.setDropDownViewResource(R.layout.xp_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         int index = indexOf(values, selected);
+        if (index < 0) index = nearestNumericIndex(values, selected);
         if (index >= 0) spinner.setSelection(index, false);
         spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
@@ -138,6 +139,27 @@ public class KernelManagerActivity extends Activity {
         String[] labels = new String[values.length];
         for (int i = 0; i < values.length; i++) labels[i] = cpuMhz(values[i]) + " MHz";
         return labels;
+    }
+    private static int nearestNumericIndex(String[] values, String selected) {
+        if (values == null || values.length == 0 || selected == null) return -1;
+        try {
+            long target = Long.parseLong(selected);
+            int bestIndex = -1;
+            long bestDelta = Long.MAX_VALUE;
+            for (int i = 0; i < values.length; i++) {
+                try {
+                    long value = Long.parseLong(values[i]);
+                    long delta = Math.abs(value - target);
+                    if (delta < bestDelta) {
+                        bestDelta = delta;
+                        bestIndex = i;
+                    }
+                } catch (RuntimeException ignored) { }
+            }
+            return bestIndex;
+        } catch (RuntimeException e) {
+            return -1;
+        }
     }
     private static int indexOf(String[] values, String selected) {
         if (values == null || selected == null) return -1;

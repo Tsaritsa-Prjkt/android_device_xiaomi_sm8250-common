@@ -79,14 +79,18 @@ public class KernelManagerFragment extends SettingsBasePreferenceFragment
             mGovernorPreference.setSummary(getString(R.string.cpu_governor_summary, current));
         }
 
-        loadFrequenciesForCluster(KernelManagerUtils.EFFICIENCY_CLUSTER,
+        loadFrequencyValues(mKernelUtils.getEfficiencyUiFrequencies(),
+                mKernelUtils.getCurrentMinFrequency(KernelManagerUtils.EFFICIENCY_CLUSTER),
+                mKernelUtils.getCurrentMaxFrequency(KernelManagerUtils.EFFICIENCY_CLUSTER),
                 mEfficiencyMinFreq, mEfficiencyMaxFreq);
-        loadFrequenciesForCluster(KernelManagerUtils.PERFORMANCE_CLUSTER,
+        loadFrequencyValues(mKernelUtils.getPerformanceUiFrequencies(),
+                mKernelUtils.getPerformanceCurrentMinFrequency(),
+                mKernelUtils.getPerformanceCurrentMaxFrequency(),
                 mPerformanceMinFreq, mPerformanceMaxFreq);
     }
 
-    private void loadFrequenciesForCluster(int cluster, ListPreference minPref, ListPreference maxPref) {
-        String[] frequencies = mKernelUtils.getAvailableFrequencies(cluster);
+    private void loadFrequencyValues(String[] frequencies, String currentMin, String currentMax,
+            ListPreference minPref, ListPreference maxPref) {
         if (frequencies == null || frequencies.length == 0) return;
 
         String[] labels = new String[frequencies.length];
@@ -97,16 +101,36 @@ public class KernelManagerFragment extends SettingsBasePreferenceFragment
         if (minPref != null) {
             minPref.setEntries(labels);
             minPref.setEntryValues(frequencies);
-            String current = mKernelUtils.getCurrentMinFrequency(cluster);
-            minPref.setValue(current);
-            minPref.setSummary(toCpuMhz(current) + " MHz");
+            String selectedMin = nearestValue(frequencies, currentMin);
+            minPref.setValue(selectedMin);
+            minPref.setSummary(toCpuMhz(selectedMin) + " MHz");
         }
         if (maxPref != null) {
             maxPref.setEntries(labels);
             maxPref.setEntryValues(frequencies);
-            String current = mKernelUtils.getCurrentMaxFrequency(cluster);
-            maxPref.setValue(current);
-            maxPref.setSummary(toCpuMhz(current) + " MHz");
+            String selectedMax = nearestValue(frequencies, currentMax);
+            maxPref.setValue(selectedMax);
+            maxPref.setSummary(toCpuMhz(selectedMax) + " MHz");
+        }
+    }
+
+    private static String nearestValue(String[] values, String selected) {
+        if (values == null || values.length == 0) return null;
+        if (selected == null) return values[0];
+        try {
+            long target = Long.parseLong(selected);
+            String best = values[0];
+            long bestDelta = Math.abs(Long.parseLong(best) - target);
+            for (String value : values) {
+                long delta = Math.abs(Long.parseLong(value) - target);
+                if (delta < bestDelta) {
+                    best = value;
+                    bestDelta = delta;
+                }
+            }
+            return best;
+        } catch (RuntimeException e) {
+            return values[0];
         }
     }
 

@@ -8,13 +8,14 @@ import android.widget.Toast;
 
 import org.lineageos.settings.R;
 
-/** Screenshot-styled per-core control page. */
+/** Screenshot-styled per-core control page backed by real CPU online sysfs nodes. */
 public class CoreControlActivity extends Activity {
     private final CoreControlUtils mUtils = new CoreControlUtils();
     private Switch[] mSwitches;
     private boolean mRefreshing;
 
-    @Override protected void onCreate(Bundle savedInstanceState) {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_core_control);
         findViewById(R.id.xp_back).setOnClickListener(v -> finish());
@@ -30,7 +31,8 @@ public class CoreControlActivity extends Activity {
             mSwitches[i].setOnCheckedChangeListener((button, checked) -> {
                 if (mRefreshing) return;
                 if (!checked && !mUtils.canOffline(core)) {
-                    Toast.makeText(this, R.string.core_control_minimum_error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.core_control_minimum_error,
+                            Toast.LENGTH_SHORT).show();
                     refresh();
                     return;
                 }
@@ -43,7 +45,8 @@ public class CoreControlActivity extends Activity {
         refresh();
     }
 
-    @Override protected void onResume() {
+    @Override
+    protected void onResume() {
         super.onResume();
         refresh();
     }
@@ -52,7 +55,10 @@ public class CoreControlActivity extends Activity {
         if (mSwitches == null) return;
         mRefreshing = true;
         for (int i = 0; i < mSwitches.length; i++) {
+            boolean controllable = mUtils.isCoreControllable(i);
             mSwitches[i].setChecked(mUtils.isCoreOnline(i));
+            mSwitches[i].setEnabled(controllable);
+            mSwitches[i].setAlpha(controllable ? 1.0f : 0.65f);
         }
         mRefreshing = false;
     }

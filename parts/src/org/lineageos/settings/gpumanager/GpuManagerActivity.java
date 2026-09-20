@@ -103,16 +103,21 @@ public class GpuManagerActivity extends Activity {
         if (mFrequencyValues == null) mFrequencyValues = new String[0];
         String[] freqLabels = new String[mFrequencyValues.length];
         for (int i = 0; i < mFrequencyValues.length; i++) {
-            freqLabels[i] = gpuMhz(mFrequencyValues[i]) + " MHz";
+            freqLabels[i] = GpuManagerUtils.formatFrequencyMhz(mFrequencyValues[i]) + " MHz";
         }
         bindSpinner(mMin, freqLabels, mFrequencyValues, mUtils.getCurrentMinFrequency());
         bindSpinner(mMax, freqLabels, mFrequencyValues, mUtils.getCurrentMaxFrequency());
 
-        mForceClk.setChecked(mUtils.getForceClkOn());
-        mForceBus.setChecked(mUtils.getForceBusOn());
-        mForceRail.setChecked(mUtils.getForceRailOn());
-        mForceNoNap.setChecked(mUtils.getForceNoNap());
-        mBusSplit.setChecked(mUtils.getBusSplit());
+        mGovernor.setEnabled(mUtils.isGovernorSupported());
+        boolean frequencySupported = mUtils.isFrequencyControlSupported();
+        mMin.setEnabled(frequencySupported);
+        mMax.setEnabled(frequencySupported);
+
+        configureSwitch(mForceClk, mUtils.isForceClkSupported(), mUtils.getForceClkOn());
+        configureSwitch(mForceBus, mUtils.isForceBusSupported(), mUtils.getForceBusOn());
+        configureSwitch(mForceRail, mUtils.isForceRailSupported(), mUtils.getForceRailOn());
+        configureSwitch(mForceNoNap, mUtils.isForceNoNapSupported(), mUtils.getForceNoNap());
+        configureSwitch(mBusSplit, mUtils.isBusSplitSupported(), mUtils.getBusSplit());
         updateGovernorActive();
     }
 
@@ -121,6 +126,7 @@ public class GpuManagerActivity extends Activity {
         adapter.setDropDownViewResource(R.layout.xp_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         int index = indexOf(values, selected);
+        if (index < 0) index = nearestNumericIndex(values, selected);
         if (index >= 0) spinner.setSelection(index, false);
         spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
@@ -144,7 +150,7 @@ public class GpuManagerActivity extends Activity {
         String temp = mUtils.getGpuTemperature();
         mTemp.setText("0".equals(temp) ? "—" : temp + "°C");
         String freq = mUtils.getCurrentFrequency();
-        mFreq.setText("0".equals(freq) ? "—" : gpuMhz(freq) + " MHz");
+        mFreq.setText("0".equals(freq) ? "—" : GpuManagerUtils.formatFrequencyMhz(freq) + " MHz");
         mThermal.setText("Level " + mUtils.getThermalPowerLevel());
     }
 
@@ -152,14 +158,18 @@ public class GpuManagerActivity extends Activity {
         String governor = selected(mGovernorValues, mGovernor);
         String min = selected(mFrequencyValues, mMin);
         String max = selected(mFrequencyValues, mMax);
-        boolean ok = governor != null && min != null && max != null;
-        if (ok) ok = mUtils.setGovernor(governor);
-        if (ok) ok = mUtils.setFrequencyRange(min, max);
-        if (ok) ok = mUtils.setForceClkOn(mForceClk.isChecked());
-        if (ok) ok = mUtils.setForceBusOn(mForceBus.isChecked());
-        if (ok) ok = mUtils.setForceRailOn(mForceRail.isChecked());
-        if (ok) ok = mUtils.setForceNoNap(mForceNoNap.isChecked());
-        if (ok) ok = mUtils.setBusSplit(mBusSplit.isChecked());
+        boolean ok = true;
+        if (mUtils.isGovernorSupported()) {
+            ok = governor != null && mUtils.setGovernor(governor);
+        }
+        if (ok && mUtils.isFrequencyControlSupported()) {
+            ok = min != null && max != null && mUtils.setFrequencyRange(min, max);
+        }
+        if (ok && mUtils.isForceClkSupported()) ok = mUtils.setForceClkOn(mForceClk.isChecked());
+        if (ok && mUtils.isForceBusSupported()) ok = mUtils.setForceBusOn(mForceBus.isChecked());
+        if (ok && mUtils.isForceRailSupported()) ok = mUtils.setForceRailOn(mForceRail.isChecked());
+        if (ok && mUtils.isForceNoNapSupported()) ok = mUtils.setForceNoNap(mForceNoNap.isChecked());
+        if (ok && mUtils.isBusSplitSupported()) ok = mUtils.setBusSplit(mBusSplit.isChecked());
 
         if (ok) {
             mPrefs.edit()
@@ -198,6 +208,34 @@ public class GpuManagerActivity extends Activity {
                 Toast.LENGTH_SHORT).show();
     }
 
+    private static void configureSwitch(Switch view, boolean supported, boolean checked) {
+        view.setChecked(supported && checked);
+        view.setEnabled(supported);
+        view.setAlpha(supported ? 1.0f : 0.55f);
+    }
+
+    private static int nearestNumericIndex(String[] values, String selected) {
+        if (values == null || values.length == 0 || selected == null) return -1;
+        try {
+            long target = Long.parseLong(selected);
+            int bestIndex = -1;
+            long bestDelta = Long.MAX_VALUE;
+            for (int i = 0; i < values.length; i++) {
+                try {
+                    long value = Long.parseLong(values[i]);
+                    long delta = Math.abs(value - target);
+                    if (delta < bestDelta) {
+                        bestDelta = delta;
+                        bestIndex = i;
+                    }
+                } catch (RuntimeException ignored) { }
+            }
+            return bestIndex;
+        } catch (RuntimeException e) {
+            return -1;
+        }
+    }
+
     private static int indexOf(String[] values, String selected) {
         if (values == null || selected == null) return -1;
         for (int i = 0; i < values.length; i++) if (selected.equals(values[i])) return i;
@@ -210,7 +248,4 @@ public class GpuManagerActivity extends Activity {
         return position >= 0 && position < values.length ? values[position] : null;
     }
 
-    private static long gpuMhz(String hz) {
-        try { return Long.parseLong(hz) / 1_000_000L; } catch (RuntimeException e) { return 0; }
-    }
 }
