@@ -41,7 +41,6 @@ public class RefreshService extends Service {
     public void onCreate() {
         super.onCreate();
         mRefreshUtils = new RefreshUtils(this);
-        mRefreshUtils.captureBaselineIfNeeded();
         mActivityTaskManager = ActivityTaskManager.getService();
         try {
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
