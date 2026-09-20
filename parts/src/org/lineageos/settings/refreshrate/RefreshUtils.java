@@ -20,6 +20,9 @@ public final class RefreshUtils {
     private static final String KEY_BASELINE_MIN = "refresh_baseline_min";
     private static final String KEY_BASELINE_PEAK = "refresh_baseline_peak";
     private static final String KEY_BASELINE_VALID = "refresh_baseline_valid";
+    private static final String KEY_OVERRIDE_ACTIVE = "refresh_override_active";
+    private static final String KEY_STATE_VERSION = "refresh_state_version";
+    private static final int STATE_VERSION = 2;
 
     private static final String KEY_PEAK_REFRESH_RATE = Settings.System.PEAK_REFRESH_RATE;
     private static final String KEY_MIN_REFRESH_RATE = Settings.System.MIN_REFRESH_RATE;
@@ -42,6 +45,7 @@ public final class RefreshUtils {
         mContext = context.getApplicationContext();
         Context storage = mContext.createDeviceProtectedStorageContext();
         mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(storage);
+        migrateStateIfNeeded();
         sanitizeStoredProfiles();
     }
 
@@ -49,12 +53,36 @@ public final class RefreshUtils {
         context.startService(new Intent(context, RefreshService.class));
     }
 
+    /**
+     * Records an explicit user-selected global refresh policy, for example from
+     * the XiaomiParts QS tile. Explicit global changes are never treated as an
+     * active per-app override.
+     */
     public static void updateBaseline(Context context, float minRate, float peakRate) {
         Context storage = context.createDeviceProtectedStorageContext();
         PreferenceManager.getDefaultSharedPreferences(storage).edit()
                 .putFloat(KEY_BASELINE_MIN, minRate)
                 .putFloat(KEY_BASELINE_PEAK, peakRate)
                 .putBoolean(KEY_BASELINE_VALID, true)
+                .putBoolean(KEY_OVERRIDE_ACTIVE, false)
+                .putInt(KEY_STATE_VERSION, STATE_VERSION)
+                .apply();
+    }
+
+    /**
+     * Version 1 captured a baseline when the service started and then rewrote it
+     * for every app using the Default profile. That could overwrite changes made
+     * in Android Settings (for example, Minimum refresh rate 60 Hz) with a stale
+     * 120 Hz value. Drop that stale ownership state during upgrade.
+     */
+    private void migrateStateIfNeeded() {
+        if (mSharedPrefs.getInt(KEY_STATE_VERSION, 0) >= STATE_VERSION) return;
+        mSharedPrefs.edit()
+                .remove(KEY_BASELINE_MIN)
+                .remove(KEY_BASELINE_PEAK)
+                .putBoolean(KEY_BASELINE_VALID, false)
+                .putBoolean(KEY_OVERRIDE_ACTIVE, false)
+                .putInt(KEY_STATE_VERSION, STATE_VERSION)
                 .apply();
     }
 
@@ -111,8 +139,10 @@ public final class RefreshUtils {
         return STATE_DEFAULT;
     }
 
-    protected void captureBaselineIfNeeded() {
-        if (mSharedPrefs.getBoolean(KEY_BASELINE_VALID, false)) return;
+    /** Capture the user's current system policy immediately before an override. */
+    private void beginOverrideIfNeeded() {
+        if (mSharedPrefs.getBoolean(KEY_OVERRIDE_ACTIVE, false)) return;
+
         float peak = Settings.System.getFloat(mContext.getContentResolver(),
                 KEY_PEAK_REFRESH_RATE, REFRESH_STATE_DEFAULT);
         float min = Settings.System.getFloat(mContext.getContentResolver(),
@@ -121,17 +151,22 @@ public final class RefreshUtils {
                 .putFloat(KEY_BASELINE_MIN, min)
                 .putFloat(KEY_BASELINE_PEAK, peak)
                 .putBoolean(KEY_BASELINE_VALID, true)
+                .putBoolean(KEY_OVERRIDE_ACTIVE, true)
                 .apply();
     }
 
     protected void setRefreshRate(String packageName) {
-        captureBaselineIfNeeded();
         int state = getStateForPackage(packageName);
+
+        // Default means XiaomiParts does not own refresh-rate policy. If we are
+        // leaving a profiled app, restore its captured policy once; otherwise do
+        // nothing and leave Android Settings in full control.
         if (state == STATE_DEFAULT) {
             restoreBaseline();
             return;
         }
 
+        beginOverrideIfNeeded();
         float rate = state == STATE_STANDARD ? REFRESH_STATE_STANDARD : REFRESH_STATE_EXTREME;
         float currentMin = Settings.System.getFloat(mContext.getContentResolver(),
                 KEY_MIN_REFRESH_RATE, rate);
@@ -140,13 +175,30 @@ public final class RefreshUtils {
     }
 
     protected void restoreBaseline() {
-        if (!mSharedPrefs.getBoolean(KEY_BASELINE_VALID, false)) return;
+        if (!mSharedPrefs.getBoolean(KEY_OVERRIDE_ACTIVE, false)) return;
+
+        if (!mSharedPrefs.getBoolean(KEY_BASELINE_VALID, false)) {
+            clearOverrideState();
+            return;
+        }
+
         float min = mSharedPrefs.getFloat(KEY_BASELINE_MIN, REFRESH_STATE_DEFAULT);
         float peak = mSharedPrefs.getFloat(KEY_BASELINE_PEAK, REFRESH_STATE_DEFAULT);
-        writeRatesTransactional(min, peak);
+        if (writeRatesTransactional(min, peak)) {
+            clearOverrideState();
+        }
     }
 
-    private void writeRatesTransactional(float min, float peak) {
+    private void clearOverrideState() {
+        mSharedPrefs.edit()
+                .remove(KEY_BASELINE_MIN)
+                .remove(KEY_BASELINE_PEAK)
+                .putBoolean(KEY_BASELINE_VALID, false)
+                .putBoolean(KEY_OVERRIDE_ACTIVE, false)
+                .apply();
+    }
+
+    private boolean writeRatesTransactional(float min, float peak) {
         float oldMin = Settings.System.getFloat(mContext.getContentResolver(),
                 KEY_MIN_REFRESH_RATE, REFRESH_STATE_DEFAULT);
         float oldPeak = Settings.System.getFloat(mContext.getContentResolver(),
@@ -159,7 +211,9 @@ public final class RefreshUtils {
             Settings.System.putFloat(mContext.getContentResolver(), KEY_MIN_REFRESH_RATE, oldMin);
             Settings.System.putFloat(mContext.getContentResolver(), KEY_PEAK_REFRESH_RATE, oldPeak);
             Log.w(TAG, "Refresh-rate write failed; restored previous values");
+            return false;
         }
+        return true;
     }
 
     private static Set<String> parsePackages(String section, String prefix) {

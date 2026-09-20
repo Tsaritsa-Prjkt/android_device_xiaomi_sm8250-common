@@ -2,8 +2,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.lineageos.settings"
-    android:versionCode="4"
-    android:versionName="4.0"
+    android:versionCode="5"
+    android:versionName="4.3"
     android:sharedUserId="android.uid.system">
 
     <!-- Runtime capabilities actually used by XiaomiParts on Android 16/17. -->

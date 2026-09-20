@@ -268,7 +268,7 @@
     <string name="apply_kernel_settings_summary">Apply the selected CPU governor and frequency settings</string>
     <string name="reset_kernel_settings_summary">Restore CPU tuning to default values</string>
     <string name="xiaomiparts_shell_prompt">root@xiaomi:~#</string>
-    <string name="xiaomiparts_smooth_display">Smooth Display</string>
+    <string name="xiaomiparts_smooth_display">Per-app refresh rate</string>
     <string name="xiaomiparts_misound">MiSound</string>
     <string name="core_control_minimum_error">At least two little cores must remain online</string>
 </resources>
