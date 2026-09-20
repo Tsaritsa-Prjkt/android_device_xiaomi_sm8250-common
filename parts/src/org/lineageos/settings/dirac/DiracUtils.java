@@ -12,9 +12,14 @@ import android.media.AudioPlaybackConfiguration;
 import android.media.AudioRecordingConfiguration;
 import android.media.MediaRecorder;
 import android.media.audiofx.AudioEffect;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import androidx.preference.PreferenceManager;
 
@@ -35,11 +40,15 @@ public class DiracUtils {
     static final String PREF_PAUSE = "dirac_pause_during_calls";
 
     private static final String FLAT_PRESET = "0,0,0,0,0,0,0";
+    // The legacy MiSound blob needs a playback restart before an already-open
+    // offload/direct stream reliably picks up a newly-created or re-armed effect.
+    private static final long PLAYBACK_REFRESH_DELAY_MS = 1000L;
 
     private static DiracUtils sInstance;
 
     private final SharedPreferences mPreferences;
     private final AudioManager mAudioManager;
+    private final MediaSessionManager mMediaSessionManager;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Set<Runnable> mListeners = new HashSet<>();
 
@@ -48,8 +57,10 @@ public class DiracUtils {
     private Boolean mAppliedEnabled;
     private DiracSound mSound;
     private int mRestoreAttempts;
+    private MediaController mPausedControllerForRefresh;
 
     private final Runnable mRestore = this::restore;
+    private final Runnable mResumePlayback = this::resumePlaybackAfterRefresh;
     private final Runnable mAudioStateChanged = this::updateAudioState;
 
     private final AudioManager.OnModeChangedListener mModeListener = mode -> scheduleAudioUpdate();
@@ -72,6 +83,7 @@ public class DiracUtils {
         Context appContext = context.getApplicationContext().createDeviceProtectedStorageContext();
         mPreferences = PreferenceManager.getDefaultSharedPreferences(appContext);
         mAudioManager = appContext.getSystemService(AudioManager.class);
+        mMediaSessionManager = appContext.getSystemService(MediaSessionManager.class);
         if (mAudioManager == null) throw new IllegalStateException("AudioManager unavailable");
 
         mAudioManager.setAudioServerStateCallback(appContext.getMainExecutor(),
@@ -128,6 +140,108 @@ public class DiracUtils {
         return sInstance;
     }
 
+    private static int playbackState(MediaController controller) {
+        if (controller == null) return PlaybackState.STATE_NONE;
+        PlaybackState state = controller.getPlaybackState();
+        return state == null ? PlaybackState.STATE_NONE : state.getState();
+    }
+
+    private void dispatchMediaKey(MediaController controller, int keyCode) {
+        if (controller == null) return;
+        long when = SystemClock.uptimeMillis();
+        KeyEvent down = new KeyEvent(when, when, KeyEvent.ACTION_DOWN, keyCode, 0);
+        KeyEvent up = KeyEvent.changeAction(down, KeyEvent.ACTION_UP);
+        try {
+            controller.dispatchMediaButtonEvent(down);
+            mHandler.postDelayed(() -> {
+                try {
+                    controller.dispatchMediaButtonEvent(up);
+                } catch (RuntimeException error) {
+                    Log.w(TAG, "Cannot finish MiSound media-key refresh", error);
+                }
+            }, 20L);
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Cannot dispatch MiSound media-key refresh", error);
+        }
+    }
+
+    /**
+     * Reattach the legacy session-0 MiSound processor to an already-running stream.
+     *
+     * Xiaomi's old implementation intentionally paused and resumed active playback
+     * when MiSound was enabled.  Without that step, compressed-offload/direct tracks
+     * can keep the old effect chain, so headset, EQ and scene parameters appear to
+     * change in the UI while the audible stream remains unchanged.
+     */
+    private synchronized void refreshPlaybackIfNecessary() {
+        if (mMediaSessionManager == null || !Boolean.TRUE.equals(mAppliedEnabled)) return;
+
+        // If the user changes several tuning controls while the track is in our
+        // short refresh pause, keep one pause and postpone the matching resume.
+        if (mPausedControllerForRefresh != null) {
+            mHandler.removeCallbacks(mResumePlayback);
+            mHandler.postDelayed(mResumePlayback, PLAYBACK_REFRESH_DELAY_MS);
+            return;
+        }
+
+        final List<MediaController> sessions;
+        try {
+            sessions = mMediaSessionManager.getActiveSessions(null);
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Cannot query active media sessions for MiSound refresh", error);
+            return;
+        }
+
+        for (MediaController controller : sessions) {
+            if (playbackState(controller) != PlaybackState.STATE_PLAYING) continue;
+            mPausedControllerForRefresh = controller;
+            dispatchMediaKey(controller, KeyEvent.KEYCODE_MEDIA_PAUSE);
+            mHandler.removeCallbacks(mResumePlayback);
+            mHandler.postDelayed(mResumePlayback, PLAYBACK_REFRESH_DELAY_MS);
+            return;
+        }
+    }
+
+    private synchronized void resumePlaybackAfterRefresh() {
+        MediaController controller = mPausedControllerForRefresh;
+        mPausedControllerForRefresh = null;
+        if (controller == null) return;
+        dispatchMediaKey(controller, KeyEvent.KEYCODE_MEDIA_PLAY);
+    }
+
+    /**
+     * Update a live MiSound profile transactionally.  Cycling the vendor music gate
+     * makes the legacy blob reload its tuning table; refreshing active playback then
+     * makes an already-open offload/direct stream use that table immediately.
+     */
+    private void applyLiveTuning(Runnable tuning) {
+        requireEffect();
+        boolean active = Boolean.TRUE.equals(mAppliedEnabled);
+        RuntimeException failure = null;
+
+        if (active) mSound.setMusic(0);
+        try {
+            tuning.run();
+        } catch (RuntimeException error) {
+            failure = error;
+        }
+
+        if (active) {
+            try {
+                mSound.setMusic(1);
+                if (mSound.getMusic() != 1) {
+                    throw new IllegalStateException("MiSound music gate did not re-arm");
+                }
+            } catch (RuntimeException error) {
+                if (failure == null) failure = error;
+                else if (failure != error) failure.addSuppressed(error);
+            }
+        }
+
+        if (failure != null) throw failure;
+        if (active) refreshPlaybackIfNecessary();
+    }
+
     private synchronized void scheduleAudioUpdate() {
         mHandler.removeCallbacks(mAudioStateChanged);
         mHandler.post(mAudioStateChanged);
@@ -169,6 +283,7 @@ public class DiracUtils {
             boolean enabled = effectiveEnabled(isEnabledRequested(), isPauseDuringCallsEnabled());
             if (mAppliedEnabled == null || mAppliedEnabled != enabled) {
                 applyEnabled(enabled);
+                if (enabled) refreshPlaybackIfNecessary();
                 notifyListeners();
             }
         } catch (RuntimeException error) {
@@ -247,7 +362,9 @@ public class DiracUtils {
             applyEnabled(false);
             if (isEnabledRequested()) {
                 applySettings();
-                applyEnabled(effectiveEnabled(true, isPauseDuringCallsEnabled()));
+                boolean enableNow = effectiveEnabled(true, isPauseDuringCallsEnabled());
+                applyEnabled(enableNow);
+                if (enableNow) refreshPlaybackIfNecessary();
             }
             return mSound;
         } catch (RuntimeException e) {
@@ -402,7 +519,9 @@ public class DiracUtils {
             applyEnabled(false);
             if (enable) {
                 applySettings();
-                applyEnabled(effectiveEnabled(true, isPauseDuringCallsEnabled()));
+                boolean enableNow = effectiveEnabled(true, isPauseDuringCallsEnabled());
+                applyEnabled(enableNow);
+                if (enableNow) refreshPlaybackIfNecessary();
             }
             mPreferences.edit().putBoolean(PREF_ENABLE, enable).apply();
             notifyListeners();
@@ -415,23 +534,23 @@ public class DiracUtils {
     }
 
     public synchronized void setEqualizerEnabled(boolean enabled) {
-        requireEffect();
-        applyLevel(safePreset(), enabled);
+        applyLiveTuning(() -> applyLevel(safePreset(), enabled));
         mPreferences.edit().putBoolean(PREF_EQ, enabled).apply();
         notifyListeners();
     }
 
     public synchronized void setPauseDuringCallsEnabled(boolean enabled) {
         requireEffect();
-        applyEnabled(effectiveEnabled(isEnabledRequested(), enabled));
+        boolean enableNow = effectiveEnabled(isEnabledRequested(), enabled);
+        applyEnabled(enableNow);
+        if (enableNow) refreshPlaybackIfNecessary();
         mPreferences.edit().putBoolean(PREF_PAUSE, enabled).apply();
         notifyListeners();
     }
 
     public synchronized void setLevel(String preset) {
         parseLevels(preset);
-        requireEffect();
-        applyLevel(preset, isEqualizerEnabled());
+        applyLiveTuning(() -> applyLevel(preset, isEqualizerEnabled()));
         mPreferences.edit().putString(PREF_PRESET, preset).apply();
         notifyListeners();
     }
@@ -453,9 +572,12 @@ public class DiracUtils {
     }
 
     private void applyLevel(String preset, boolean enabled) {
-        float[] levels = enabled ? parseLevels(preset) : new float[0];
+        float[] levels = enabled ? parseLevels(preset) : new float[DiracSound.EQ_BAND_COUNT];
+        if (levels.length != DiracSound.EQ_BAND_COUNT) {
+            throw new IllegalArgumentException("MiSound preset does not match native EQ bands");
+        }
         for (int band = 0; band < DiracSound.EQ_BAND_COUNT; band++) {
-            mSound.setLevel(band, band < levels.length ? levels[band] : 0f);
+            mSound.setLevel(band, levels[band]);
         }
     }
 
@@ -464,7 +586,14 @@ public class DiracUtils {
     }
 
     public synchronized void setHeadsetType(int value) {
-        requireEffect().setHeadsetType(value);
+        if (value < 0 || value > 255) throw new IllegalArgumentException("Invalid headset type");
+        applyLiveTuning(() -> {
+            mSound.setHeadsetType(value);
+            // Headset tables in the vendor effect can replace parts of the active
+            // tuning profile, so explicitly re-assert the user's EQ and scene.
+            applyLevel(safePreset(), isEqualizerEnabled());
+            mSound.setScenario(getScenario());
+        });
         mPreferences.edit().putString(PREF_HEADSET, Integer.toString(value)).apply();
         notifyListeners();
     }
@@ -477,8 +606,7 @@ public class DiracUtils {
         if (!isHifiSupported()) {
             throw new UnsupportedOperationException("HAL Hi-Fi feature is disabled");
         }
-        requireEffect();
-        applyHifi(value != 0);
+        applyLiveTuning(() -> applyHifi(value != 0));
         mPreferences.edit().putBoolean(PREF_HIFI, value != 0).apply();
         notifyListeners();
     }
@@ -495,7 +623,8 @@ public class DiracUtils {
     }
 
     public synchronized void setScenario(int value) {
-        requireEffect().setScenario(value);
+        if (value < 0 || value > 4) throw new IllegalArgumentException("Invalid MiSound scene");
+        applyLiveTuning(() -> mSound.setScenario(value));
         mPreferences.edit().putString(PREF_SCENE, Integer.toString(value)).apply();
         notifyListeners();
     }

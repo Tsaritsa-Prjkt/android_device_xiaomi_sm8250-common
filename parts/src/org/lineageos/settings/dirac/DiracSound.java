@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public class DiracSound extends AudioEffect {
-    public static final int EQ_BAND_COUNT = 10;
+    public static final int EQ_BAND_COUNT = 7;
 
     private static final int MISOUND_PARAM_ENABLE = 25;
     private static final int DIRACSOUND_PARAM_HEADSET_TYPE = 1;
