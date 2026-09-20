@@ -7,15 +7,20 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
-/** State-safe helpers for CPU online/offline sysfs nodes. */
+/** State-safe helpers for CPU online/offline sysfs nodes on SM8250. */
 public final class CoreControlUtils {
     public static final int NUM_CORES = 8;
-    private static final int LAST_LITTLE_CORE = 5;
+    private static final int LAST_EFFICIENCY_CORE = 3;
+    private static final int MIN_EFFICIENCY_CORES_ONLINE = 2;
+    private static final String CPU_BASE = "/sys/devices/system/cpu/cpu";
 
     public boolean isCoreOnline(int core) {
-        File node = node(core);
-        // Linux commonly omits cpu0/online because CPU0 cannot be offlined.
-        if (!node.exists()) return core == 0;
+        if (core < 0 || core >= NUM_CORES) return false;
+        File node = onlineNode(core);
+        if (!node.exists()) {
+            /* CPU0 and non-hotpluggable CPUs do not expose an online node and are always online. */
+            return cpuDirectory(core).exists();
+        }
         try (BufferedReader reader = new BufferedReader(new FileReader(node))) {
             return "1".equals(reader.readLine());
         } catch (IOException | RuntimeException e) {
@@ -23,12 +28,16 @@ public final class CoreControlUtils {
         }
     }
 
+    public boolean isCoreControllable(int core) {
+        return core > 0 && core < NUM_CORES && onlineNode(core).exists();
+    }
+
     public boolean setCoreOnline(int core, boolean online) {
         if (core < 0 || core >= NUM_CORES) return false;
+        if (!isCoreControllable(core)) return isCoreOnline(core) == online;
         if (!online && !canOffline(core)) return false;
-        File node = node(core);
-        if (!node.exists()) return core == 0 && online;
-        if (!node.canWrite()) return false;
+
+        File node = onlineNode(core);
         try (FileWriter writer = new FileWriter(node)) {
             writer.write(online ? "1" : "0");
             writer.flush();
@@ -39,16 +48,21 @@ public final class CoreControlUtils {
     }
 
     public boolean canOffline(int core) {
-        if (core == 0) return false;
-        if (core > LAST_LITTLE_CORE) return true;
+        if (!isCoreControllable(core)) return false;
+        if (core > LAST_EFFICIENCY_CORE) return true;
+
         int remaining = 0;
-        for (int i = 0; i <= LAST_LITTLE_CORE; i++) {
+        for (int i = 0; i <= LAST_EFFICIENCY_CORE; i++) {
             if (i != core && isCoreOnline(i)) remaining++;
         }
-        return remaining >= 2;
+        return remaining >= MIN_EFFICIENCY_CORES_ONLINE;
     }
 
-    private File node(int core) {
-        return new File("/sys/devices/system/cpu/cpu" + core + "/online");
+    private File onlineNode(int core) {
+        return new File(CPU_BASE + core + "/online");
+    }
+
+    private File cpuDirectory(int core) {
+        return new File(CPU_BASE + core);
     }
 }

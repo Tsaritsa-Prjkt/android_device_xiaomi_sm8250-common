@@ -19,21 +19,21 @@
 
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="30dp"
                 android:orientation="vertical" android:background="@drawable/xp_bg_card_alt">
-                <Switch android:id="@+id/core_0_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 0" />
+                <Switch android:id="@+id/core_0_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_0" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_1_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 1" />
+                <Switch android:id="@+id/core_1_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_1" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_2_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 2" />
+                <Switch android:id="@+id/core_2_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_2" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_3_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 3" />
+                <Switch android:id="@+id/core_3_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_3" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_4_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 4" />
+                <Switch android:id="@+id/core_4_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_4" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_5_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 5" />
+                <Switch android:id="@+id/core_5_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_5" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_6_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 6 (Big)" />
+                <Switch android:id="@+id/core_6_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_6" />
                 <View style="@style/XiaomiPartsDivider" />
-                <Switch android:id="@+id/core_7_switch" style="@style/XiaomiPartsCoreSwitch" android:text="Core 7 (Big)" />
+                <Switch android:id="@+id/core_7_switch" style="@style/XiaomiPartsCoreSwitch" android:text="@string/core_7" />
             </LinearLayout>
 
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp"

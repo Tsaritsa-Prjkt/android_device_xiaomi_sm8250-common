@@ -1,103 +1,64 @@
-/*
- * Copyright (C) 2025 The LineageOS Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+/* SPDX-License-Identifier: Apache-2.0 */
 package org.lineageos.settings.corecontrol;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
+
 import androidx.preference.Preference;
+import androidx.preference.SwitchPreferenceCompat;
+
 import com.android.settingslib.widget.SettingsBasePreferenceFragment;
-import androidx.preference.SwitchPreference;
 
 import org.lineageos.settings.R;
 
-import java.io.File;
+/** Preference implementation kept in sync with the dashboard Core Control activity. */
+public class CoreControlFragment extends SettingsBasePreferenceFragment
+        implements Preference.OnPreferenceChangeListener {
 
-public class CoreControlFragment extends SettingsBasePreferenceFragment implements Preference.OnPreferenceChangeListener {
-    private static final String TAG = "CoreControlFragment";
-    private static final int NUM_CORES = 8;
-
-    private SwitchPreference[] mCorePrefs = new SwitchPreference[NUM_CORES];
+    private final CoreControlUtils mUtils = new CoreControlUtils();
+    private final SwitchPreferenceCompat[] mCorePrefs =
+            new SwitchPreferenceCompat[CoreControlUtils.NUM_CORES];
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        addPreferencesFromResource(R.xml.core_control_settings);
+        setPreferencesFromResource(R.xml.core_control_settings, rootKey);
+        refresh();
+    }
 
-        for (int i = 0; i < NUM_CORES; i++) {
+    @Override
+    public void onResume() {
+        super.onResume();
+        refresh();
+    }
+
+    private void refresh() {
+        for (int i = 0; i < CoreControlUtils.NUM_CORES; i++) {
             String key = "core_" + i;
-            mCorePrefs[i] = (SwitchPreference) findPreference(key);
-            if (mCorePrefs[i] != null) {
-                mCorePrefs[i].setOnPreferenceChangeListener(this);
-                mCorePrefs[i].setChecked(isCoreOnline(i));
-            }
+            mCorePrefs[i] = findPreference(key);
+            if (mCorePrefs[i] == null) continue;
+            mCorePrefs[i].setOnPreferenceChangeListener(this);
+            mCorePrefs[i].setChecked(mUtils.isCoreOnline(i));
+            mCorePrefs[i].setEnabled(mUtils.isCoreControllable(i));
         }
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         boolean requestedState = (Boolean) newValue;
-
-        for (int i = 0; i < NUM_CORES; i++) {
-            if (preference == mCorePrefs[i]) {
-                if (!requestedState && !canOffline(i)) {
-                    Toast.makeText(getContext(), "At least 2 little cores must remain online", Toast.LENGTH_SHORT).show();
-                    return false;
-                }
-                setCoreState(i, requestedState);
-                return true;
+        for (int i = 0; i < mCorePrefs.length; i++) {
+            if (preference != mCorePrefs[i]) continue;
+            if (!requestedState && !mUtils.canOffline(i)) {
+                Toast.makeText(requireContext(), R.string.core_control_minimum_error,
+                        Toast.LENGTH_SHORT).show();
+                return false;
             }
+            boolean ok = mUtils.setCoreOnline(i, requestedState);
+            if (!ok) {
+                Toast.makeText(requireContext(), R.string.parts_apply_failed,
+                        Toast.LENGTH_SHORT).show();
+            }
+            return ok;
         }
         return false;
-    }
-
-    private boolean isCoreOnline(int core) {
-        return new File("/sys/devices/system/cpu/cpu" + core + "/online").exists() &&
-               readFile("/sys/devices/system/cpu/cpu" + core + "/online").equals("1");
-    }
-
-    private void setCoreState(int core, boolean online) {
-        writeFile("/sys/devices/system/cpu/cpu" + core + "/online", online ? "1" : "0");
-    }
-
-    private boolean canOffline(int core) {
-        if (core >= 0 && core <= 5) {
-            int onlineCount = 0;
-            for (int i = 0; i <= 5; i++) {
-                if (i != core && isCoreOnline(i)) onlineCount++;
-            }
-            return onlineCount >= 2;
-        }
-        return true;
-    }
-
-    private String readFile(String path) {
-        try {
-            return new String(java.nio.file.Files.readAllBytes(new File(path).toPath())).trim();
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to read " + path, e);
-            return "";
-        }
-    }
-
-    private void writeFile(String path, String value) {
-        try {
-            java.nio.file.Files.write(new File(path).toPath(), value.getBytes());
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to write " + path, e);
-        }
     }
 }

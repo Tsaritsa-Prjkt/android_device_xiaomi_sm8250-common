@@ -2,8 +2,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.lineageos.settings"
-    android:versionCode="5"
-    android:versionName="4.3"
+    android:versionCode="6"
+    android:versionName="4.4"
     android:sharedUserId="android.uid.system">
 
     <!-- Runtime capabilities actually used by XiaomiParts on Android 16/17. -->
@@ -59,10 +59,10 @@
                 android:resource="@string/xiaomiparts_settings_summary" />
             <meta-data
                 android:name="com.android.settings.icon"
-                android:resource="@drawable/ic_xiaomiparts_logo" />
+                android:resource="@drawable/ic_xiaomiparts_settings" />
             <meta-data
                 android:name="com.android.settings.icon_tintable"
-                android:value="false" />
+                android:value="true" />
             <meta-data
                 android:name="com.android.settings.order"
                 android:value="-255" />

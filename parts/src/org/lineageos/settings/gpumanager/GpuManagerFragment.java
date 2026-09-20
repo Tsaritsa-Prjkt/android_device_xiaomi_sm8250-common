@@ -136,39 +136,71 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment
 
         String[] labels = new String[frequencies.length];
         for (int i = 0; i < frequencies.length; i++) {
-            labels[i] = toGpuMhz(frequencies[i]) + " MHz";
+            labels[i] = GpuManagerUtils.formatFrequencyMhz(frequencies[i]) + " MHz";
         }
 
         if (mMinFreqPreference != null) {
             mMinFreqPreference.setEntries(labels);
             mMinFreqPreference.setEntryValues(frequencies);
             String current = mGpuUtils.getCurrentMinFrequency();
-            mMinFreqPreference.setValue(current);
-            mMinFreqPreference.setSummary(toGpuMhz(current) + " MHz");
+            String selected = nearestValue(frequencies, current);
+            mMinFreqPreference.setValue(selected);
+            mMinFreqPreference.setSummary(GpuManagerUtils.formatFrequencyMhz(selected) + " MHz");
         }
 
         if (mMaxFreqPreference != null) {
             mMaxFreqPreference.setEntries(labels);
             mMaxFreqPreference.setEntryValues(frequencies);
             String current = mGpuUtils.getCurrentMaxFrequency();
-            mMaxFreqPreference.setValue(current);
-            mMaxFreqPreference.setSummary(toGpuMhz(current) + " MHz");
+            String selected = nearestValue(frequencies, current);
+            mMaxFreqPreference.setValue(selected);
+            mMaxFreqPreference.setSummary(GpuManagerUtils.formatFrequencyMhz(selected) + " MHz");
+        }
+    }
+
+    private static String nearestValue(String[] values, String selected) {
+        if (values == null || values.length == 0) return null;
+        if (selected == null) return values[0];
+        try {
+            long target = Long.parseLong(selected);
+            String best = values[0];
+            long bestDelta = Math.abs(Long.parseLong(best) - target);
+            for (String value : values) {
+                long delta = Math.abs(Long.parseLong(value) - target);
+                if (delta < bestDelta) {
+                    best = value;
+                    bestDelta = delta;
+                }
+            }
+            return best;
+        } catch (RuntimeException e) {
+            return values[0];
         }
     }
 
     private void loadSwitchStates() {
-        if (mForceClkOnPreference != null) mForceClkOnPreference.setChecked(mGpuUtils.getForceClkOn());
-        if (mForceBusOnPreference != null) mForceBusOnPreference.setChecked(mGpuUtils.getForceBusOn());
-        if (mForceRailOnPreference != null) mForceRailOnPreference.setChecked(mGpuUtils.getForceRailOn());
-        if (mForceNoNapPreference != null) mForceNoNapPreference.setChecked(mGpuUtils.getForceNoNap());
-        if (mBusSplitPreference != null) mBusSplitPreference.setChecked(mGpuUtils.getBusSplit());
+        configureSwitch(mForceClkOnPreference, mGpuUtils.isForceClkSupported(), mGpuUtils.getForceClkOn());
+        configureSwitch(mForceBusOnPreference, mGpuUtils.isForceBusSupported(), mGpuUtils.getForceBusOn());
+        configureSwitch(mForceRailOnPreference, mGpuUtils.isForceRailSupported(), mGpuUtils.getForceRailOn());
+        configureSwitch(mForceNoNapPreference, mGpuUtils.isForceNoNapSupported(), mGpuUtils.getForceNoNap());
+        configureSwitch(mBusSplitPreference, mGpuUtils.isBusSplitSupported(), mGpuUtils.getBusSplit());
+        if (mGovernorPreference != null) mGovernorPreference.setEnabled(mGpuUtils.isGovernorSupported());
+        boolean freq = mGpuUtils.isFrequencyControlSupported();
+        if (mMinFreqPreference != null) mMinFreqPreference.setEnabled(freq);
+        if (mMaxFreqPreference != null) mMaxFreqPreference.setEnabled(freq);
+    }
+
+    private static void configureSwitch(SwitchPreferenceCompat pref, boolean supported, boolean checked) {
+        if (pref == null) return;
+        pref.setChecked(supported && checked);
+        pref.setEnabled(supported);
     }
 
     private void updateDynamicInfo() {
         if (mCurrentFreqPreference != null) {
             String value = mGpuUtils.getCurrentFrequency();
             mCurrentFreqPreference.setSummary("0".equals(value)
-                    ? getString(R.string.unknown_value) : toGpuMhz(value) + " MHz");
+                    ? getString(R.string.unknown_value) : GpuManagerUtils.formatFrequencyMhz(value) + " MHz");
         }
         if (mGpuBusyPreference != null) {
             String busy = mGpuUtils.getGpuBusyPercentage();
@@ -209,7 +241,7 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment
             preference.setSummary(getString(R.string.gpu_governor_summary, String.valueOf(newValue)));
         } else if (GpuManagerUtils.PREF_MIN_FREQ.equals(key)
                 || GpuManagerUtils.PREF_MAX_FREQ.equals(key)) {
-            preference.setSummary(toGpuMhz(String.valueOf(newValue)) + " MHz");
+            preference.setSummary(GpuManagerUtils.formatFrequencyMhz(String.valueOf(newValue)) + " MHz");
         }
         // Power switches are staged until Apply Settings, matching the screenshot flow.
         return true;
@@ -217,18 +249,19 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment
 
     private void applySettings() {
         boolean ok = true;
-        if (mGovernorPreference != null) {
+        if (mGovernorPreference != null && mGpuUtils.isGovernorSupported()) {
             ok &= mGpuUtils.setGovernor(mGovernorPreference.getValue());
         }
-        if (mMinFreqPreference != null && mMaxFreqPreference != null) {
+        if (mMinFreqPreference != null && mMaxFreqPreference != null
+                && mGpuUtils.isFrequencyControlSupported()) {
             ok &= mGpuUtils.setFrequencyRange(
                     mMinFreqPreference.getValue(), mMaxFreqPreference.getValue());
         }
-        if (mForceClkOnPreference != null) ok &= mGpuUtils.setForceClkOn(mForceClkOnPreference.isChecked());
-        if (mForceBusOnPreference != null) ok &= mGpuUtils.setForceBusOn(mForceBusOnPreference.isChecked());
-        if (mForceRailOnPreference != null) ok &= mGpuUtils.setForceRailOn(mForceRailOnPreference.isChecked());
-        if (mForceNoNapPreference != null) ok &= mGpuUtils.setForceNoNap(mForceNoNapPreference.isChecked());
-        if (mBusSplitPreference != null) ok &= mGpuUtils.setBusSplit(mBusSplitPreference.isChecked());
+        if (mForceClkOnPreference != null && mGpuUtils.isForceClkSupported()) ok &= mGpuUtils.setForceClkOn(mForceClkOnPreference.isChecked());
+        if (mForceBusOnPreference != null && mGpuUtils.isForceBusSupported()) ok &= mGpuUtils.setForceBusOn(mForceBusOnPreference.isChecked());
+        if (mForceRailOnPreference != null && mGpuUtils.isForceRailSupported()) ok &= mGpuUtils.setForceRailOn(mForceRailOnPreference.isChecked());
+        if (mForceNoNapPreference != null && mGpuUtils.isForceNoNapSupported()) ok &= mGpuUtils.setForceNoNap(mForceNoNapPreference.isChecked());
+        if (mBusSplitPreference != null && mGpuUtils.isBusSplitSupported()) ok &= mGpuUtils.setBusSplit(mBusSplitPreference.isChecked());
 
         Toast.makeText(requireContext(), ok ? R.string.settings_applied : R.string.settings_apply_failed,
                 Toast.LENGTH_SHORT).show();
@@ -242,7 +275,4 @@ public class GpuManagerFragment extends SettingsBasePreferenceFragment
                 Toast.LENGTH_SHORT).show();
     }
 
-    private static long toGpuMhz(String hz) {
-        try { return Long.parseLong(hz) / 1_000_000L; } catch (RuntimeException e) { return 0; }
-    }
 }

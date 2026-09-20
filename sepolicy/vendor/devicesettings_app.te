@@ -19,3 +19,18 @@ allow devicesettings_app vendor_sysfs_graphics:file rw_file_perms;
 # Allow devicesettings_app to access battery sysfs for charge bypass
 allow devicesettings_app vendor_sysfs_battery_supply:dir search;
 allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
+
+# Allow Core Control
+allow devicesettings_app vendor_sysfs_corecontrol:dir search;
+allow devicesettings_app vendor_sysfs_corecontrol:file rw_file_perms;
+
+# Kernel Manager (cpufreq policy0/policy4/policy7)
+allow devicesettings_app sysfs_devices_system_cpu:dir search;
+allow devicesettings_app vendor_sysfs_cpufreq:file rw_file_perms;
+
+# GPU Manager
+allow devicesettings_app sysfs_kgsl:dir search;
+allow devicesettings_app sysfs_kgsl:file rw_file_perms;
+allow devicesettings_app sysfs_kgsl:lnk_file read;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:dir search;
+allow devicesettings_app vendor_sysfs_kgsl_gpuclk:file rw_file_perms;

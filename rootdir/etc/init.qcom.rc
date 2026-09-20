@@ -375,19 +375,25 @@ on post-fs-data
     mkdir /data/vendor/dolby 0770 media media
 
     # Kernel Manager
+    # Exposes cpufreq policies for cpu0-3, cpu4-6 and cpu7.
     chown system system /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-    chown system system /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
     chown system system /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+    chown system system /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq
+    chown system system /sys/devices/system/cpu/cpufreq/policy4/scaling_governor
+    chown system system /sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq
     chown system system /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq
+    chown system system /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
     chown system system /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq
     chown system system /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq
-
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq
-    chmod 0664 /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy4/scaling_governor
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy4/scaling_min_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy4/scaling_max_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq
 
     # GPU Manager
     chown system system /sys/class/kgsl/kgsl-3d0/devfreq/governor
@@ -398,17 +404,16 @@ on post-fs-data
     chown system system /sys/class/kgsl/kgsl-3d0/force_rail_on
     chown system system /sys/class/kgsl/kgsl-3d0/force_no_nap
     chown system system /sys/class/kgsl/kgsl-3d0/bus_split
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/devfreq/governor
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/devfreq/min_freq
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/devfreq/max_freq
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/force_clk_on
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/force_bus_on
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/force_rail_on
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/force_no_nap
+    chmod 0660 /sys/class/kgsl/kgsl-3d0/bus_split
 
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/devfreq/governor
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/devfreq/min_freq
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/devfreq/max_freq
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/force_clk_on
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/force_bus_on
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/force_rail_on
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/force_no_nap
-    chmod 0664 /sys/class/kgsl/kgsl-3d0/bus_split
-
-    # Allow Core Control
+    # Core Control
     chown system system /sys/devices/system/cpu/cpu0/online
     chown system system /sys/devices/system/cpu/cpu1/online
     chown system system /sys/devices/system/cpu/cpu2/online
