@@ -5,6 +5,10 @@
 package org.lineageos.settings.dirac;
 
 import android.os.Bundle;
+import android.media.AudioAttributes;
+import android.media.AudioDeviceAttributes;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -29,6 +33,34 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
     private SwitchPreferenceCompat mEqualizer;
     private SwitchPreferenceCompat mPauseDuringCalls;
     private DiracUtils mDiracUtils;
+    private AudioManager mAudioManager;
+    private boolean mRouteRegistered;
+    private boolean mHeadphoneRoute;
+    private static final AudioAttributes MEDIA = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA).build();
+    private final AudioManager.OnDevicesForAttributesChangedListener mRouteListener =
+            (attributes, devices) -> {
+                if (!isResumed()) return;
+                updateRoute(devices);
+                updateState();
+            };
+
+    private void updateRoute(java.util.List<AudioDeviceAttributes> devices) {
+        mHeadphoneRoute = devices.stream().anyMatch(device -> {
+            switch (device.getType()) {
+                case AudioDeviceInfo.TYPE_WIRED_HEADSET:
+                case AudioDeviceInfo.TYPE_WIRED_HEADPHONES:
+                case AudioDeviceInfo.TYPE_USB_HEADSET:
+                case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
+                case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
+                case AudioDeviceInfo.TYPE_BLE_HEADSET:
+                    return true;
+                default:
+                    return false;
+            }
+        });
+    }
+
     private final Runnable mStateListener = this::updateState;
 
     @Override
@@ -59,11 +91,29 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
         } catch (RuntimeException e) {
             Log.w(TAG, "Cannot initialize MiSound", e);
         }
+        mAudioManager = requireContext().getSystemService(AudioManager.class);
+        try {
+            updateRoute(mAudioManager.getDevicesForAttributes(MEDIA));
+            mAudioManager.addOnDevicesForAttributesChangedListener(
+                    MEDIA, requireContext().getMainExecutor(), mRouteListener);
+            mRouteRegistered = true;
+        } catch (RuntimeException e) {
+            mHeadphoneRoute = false;
+            Log.w(TAG, "Cannot query MiSound media route", e);
+        }
         updateState();
     }
 
     @Override
     public void onPause() {
+        if (mRouteRegistered) {
+            try {
+                mAudioManager.removeOnDevicesForAttributesChangedListener(mRouteListener);
+            } catch (RuntimeException e) {
+                Log.w(TAG, "Cannot unregister MiSound route listener", e);
+            }
+            mRouteRegistered = false;
+        }
         if (mDiracUtils != null) mDiracUtils.removeListener(mStateListener);
         super.onPause();
     }
@@ -89,7 +139,8 @@ public class DiracSettingsFragment extends SettingsBasePreferenceFragment implem
 
         mHeadsetType.setEntries(R.array.dirac_headset_pref_entries);
         mHeadsetType.setEntryValues(R.array.dirac_headset_pref_values);
-        if (available) {
+        mHeadsetType.setVisible(mHeadphoneRoute);
+        if (available && mHeadphoneRoute) {
             try {
                 int[] supported = mDiracUtils.getSupportedHeadsets();
                 CharSequence[] names = getResources().getTextArray(R.array.dirac_headset_pref_entries);
