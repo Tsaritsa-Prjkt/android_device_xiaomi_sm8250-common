@@ -188,6 +188,10 @@ on boot
 
     write /sys/block/sda/queue/wbt_lat_usec 75000
 
+    # VPP tuning
+    chown system system /mnt/vendor/persist/vpp/tunings.txt
+    chmod 0666 /mnt/vendor/persist/vpp/tunings.txt
+
     chown root system /sys/module/migt/parameters/add_lclus_affinity_uidlist
     chmod 0664 /sys/module/migt/parameters/add_lclus_affinity_uidlist
     chown root system /sys/module/migt/parameters/del_lclus_affinity_uidlist

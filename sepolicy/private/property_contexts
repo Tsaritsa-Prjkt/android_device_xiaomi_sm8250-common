@@ -12,3 +12,8 @@ ro.product.marketname                                                           
 
 # SettingsLib
 settingsdebug.instant.packages u:object_r:settingslib_prop:s0
+
+# VPP
+debug.media.vpp.          u:object_r:vpp_prop:s0
+debug.media.video.frc     u:object_r:vpp_prop:s0
+debug.media.video.vpp     u:object_r:vpp_prop:s0
