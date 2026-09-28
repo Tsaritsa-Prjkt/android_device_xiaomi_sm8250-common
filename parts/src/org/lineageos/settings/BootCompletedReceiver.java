@@ -20,6 +20,7 @@ package org.lineageos.settings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import org.lineageos.settings.vpp.VppUtils;
 import android.content.SharedPreferences;
 import android.hardware.display.DisplayManager;
 import android.util.Log;
@@ -47,6 +48,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
             ThermalUtils.startService(context);
         }
         RefreshUtils.startService(context);
+        VppUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
         FileUtils.enableService(context);
         overrideHdrTypes(context);
