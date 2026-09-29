@@ -18,85 +18,101 @@ package org.lineageos.settings.charge;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
-import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.SwitchPreference;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Switch;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
 import org.lineageos.settings.R;
 
-public class ChargeSettingsFragment extends PreferenceFragmentCompat 
-        implements Preference.OnPreferenceChangeListener {
+public class ChargeSettingsFragment extends Fragment {
 
-    private static final String KEY_BYPASS_CHARGE = "bypass_charge";
-
-    private ChargeUtils chargeUtils;
-    private SwitchPreference bypassChargePreference;
+    private ChargeUtils mChargeUtils;
+    private Switch mBypassSwitch;
+    private TextView mSummary;
+    private boolean mUpdatingSwitch;
 
     @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.charge_settings, rootKey);
-
-        chargeUtils = new ChargeUtils(requireActivity());
-        bypassChargePreference = findPreference(KEY_BYPASS_CHARGE);
-
-        boolean bypassChargeSupported = chargeUtils.isBypassChargeSupported();
-
-        if (bypassChargePreference != null) {
-            bypassChargePreference.setEnabled(bypassChargeSupported);
-            if (bypassChargeSupported) {
-                bypassChargePreference.setChecked(chargeUtils.isBypassChargeEnabled());
-                bypassChargePreference.setOnPreferenceChangeListener(this);
-            } else {
-                bypassChargePreference.setSummary(R.string.charge_bypass_unavailable);
-            }
-        }
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+            Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.charge_settings_layout, container, false);
     }
 
     @Override
-    public boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (KEY_BYPASS_CHARGE.equals(preference.getKey())) {
-            boolean bypassValue = (Boolean) newValue;
-            if (bypassValue) {
-                ChargeUtils.SafetyCheckResult safetyCheck = chargeUtils.performSafetyChecks();
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
-                if (!safetyCheck.isSafe()) {
-                    new AlertDialog.Builder(requireActivity())
-                            .setTitle(R.string.charge_bypass_title)
-                            .setMessage(getString(R.string.charge_bypass_safety_failed, 
-                                    safetyCheck.getReason()))
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
-                    return false;
-                }
+        mChargeUtils = new ChargeUtils(requireContext());
+        mBypassSwitch = view.findViewById(R.id.charge_bypass_switch);
+        mSummary = view.findViewById(R.id.charge_bypass_summary);
 
-                new AlertDialog.Builder(requireActivity())
-                        .setTitle(R.string.charge_bypass_title)
-                        .setMessage(R.string.charge_bypass_warning)
-                        .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                            chargeUtils.enableBypassCharge(true);
-                            if (bypassChargePreference != null) {
-                                bypassChargePreference.setChecked(true);
-                            }
-                            try {
-                                BypassChargeTileService.updateTile(requireActivity());
-                            } catch (Exception e) {
-                            }
-                        })
-                        .setNegativeButton(android.R.string.cancel, (dialog, which) -> {
-                            if (bypassChargePreference != null) {
-                                bypassChargePreference.setChecked(false);
-                            }
-                        })
-                        .show();
-                return false;
-            } else {
-                chargeUtils.enableBypassCharge(false);
-                try {
-                    BypassChargeTileService.updateTile(requireActivity());
-                } catch (Exception e) {
-                }
-                return true;
+        boolean supported = mChargeUtils.isBypassChargeSupported();
+        mBypassSwitch.setEnabled(supported);
+        mSummary.setText(supported
+                ? R.string.charge_bypass_summary
+                : R.string.charge_bypass_unavailable);
+        setSwitchChecked(supported && mChargeUtils.isBypassChargeEnabled());
+
+        mBypassSwitch.setOnCheckedChangeListener((buttonView, enabled) -> {
+            if (mUpdatingSwitch) {
+                return;
             }
+            if (enabled) {
+                requestEnable();
+            } else {
+                mChargeUtils.enableBypassCharge(false);
+                updateTile();
+            }
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mBypassSwitch != null && mChargeUtils.isBypassChargeSupported()) {
+            setSwitchChecked(mChargeUtils.isBypassChargeEnabled());
         }
-        return false;
+    }
+
+    private void requestEnable() {
+        ChargeUtils.SafetyCheckResult safetyCheck = mChargeUtils.performSafetyChecks();
+        if (!safetyCheck.isSafe()) {
+            setSwitchChecked(false);
+            new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.charge_bypass_title)
+                    .setMessage(getString(R.string.charge_bypass_safety_failed,
+                            safetyCheck.getReason()))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.charge_bypass_title)
+                .setMessage(R.string.charge_bypass_warning)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    mChargeUtils.enableBypassCharge(true);
+                    setSwitchChecked(mChargeUtils.isBypassChargeEnabled());
+                    updateTile();
+                })
+                .setNegativeButton(android.R.string.cancel,
+                        (dialog, which) -> setSwitchChecked(false))
+                .setOnCancelListener(dialog -> setSwitchChecked(false))
+                .show();
+    }
+
+    private void setSwitchChecked(boolean checked) {
+        mUpdatingSwitch = true;
+        mBypassSwitch.setChecked(checked);
+        mUpdatingSwitch = false;
+    }
+
+    private void updateTile() {
+        BypassChargeTileService.updateTile(requireContext());
     }
 }
