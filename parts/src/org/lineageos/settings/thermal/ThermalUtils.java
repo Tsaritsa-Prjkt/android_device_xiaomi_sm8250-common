@@ -43,6 +43,8 @@ public final class ThermalUtils {
     protected static final int STATE_GAMING = 5;
     protected static final int STATE_STREAMING = 6;
     private static final String THERMAL_CONTROL = "thermal_control";
+    private static final String THERMAL_ENABLED = "thermal_enabled";
+    private static final Object sProfileLock = new Object();
     private static final String THERMAL_STATE_DEFAULT = "0";
     private static final String THERMAL_STATE_BENCHMARK = "10";
     private static final String THERMAL_STATE_BROWSER = "11";
@@ -83,9 +85,34 @@ public final class ThermalUtils {
     }
 
     public static void startService(Context context) {
-        if (FileUtils.fileExists(THERMAL_SCONFIG)) {
+        if (isServiceEnabled(context) && FileUtils.fileExists(THERMAL_SCONFIG)) {
             context.startServiceAsUser(new Intent(context, ThermalService.class),
                     UserHandle.CURRENT);
+        }
+    }
+
+    public static boolean isServiceEnabled(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getBoolean(THERMAL_ENABLED, true);
+    }
+
+    public static void setServiceEnabled(Context context, boolean enabled) {
+        synchronized (sProfileLock) {
+            PreferenceManager.getDefaultSharedPreferences(context).edit()
+                    .putBoolean(THERMAL_ENABLED, enabled)
+                    .apply();
+            if (!enabled) {
+                ThermalUtils thermalUtils = new ThermalUtils(context);
+                thermalUtils.setDefaultThermalProfile();
+                thermalUtils.resetTouchModes(true);
+            }
+        }
+
+        Intent serviceIntent = new Intent(context, ThermalService.class);
+        if (enabled) {
+            startService(context);
+        } else {
+            context.stopService(serviceIntent);
         }
     }
 
@@ -98,7 +125,7 @@ public final class ThermalUtils {
 
         if (value != null) {
              String[] modes = value.split(":");
-             if (modes.length < 5) value = null;
+             if (modes.length != 6) value = null;
          }
 
         if (value == null || value.isEmpty()) {
@@ -168,6 +195,18 @@ public final class ThermalUtils {
     }
 
     protected void setThermalProfile(String packageName) {
+        synchronized (sProfileLock) {
+            // A queued task-stack callback must not restore a profile after Off.
+            if (!mSharedPrefs.getBoolean(THERMAL_ENABLED, true)) {
+                setDefaultThermalProfile();
+                resetTouchModes();
+                return;
+            }
+            applyThermalProfile(packageName);
+        }
+    }
+
+    private void applyThermalProfile(String packageName) {
         String value = getValue();
         String modes[];
         String state = THERMAL_STATE_DEFAULT;
@@ -199,6 +238,9 @@ public final class ThermalUtils {
     }
 
     private void updateTouchModes(String packageName) {
+        if (mTouchFeature == null) {
+            return;
+        }
         String values = mSharedPrefs.getString(packageName, null);
         resetTouchModes();
 
@@ -228,7 +270,11 @@ public final class ThermalUtils {
     }
 
     protected void resetTouchModes() {
-        if (!mTouchModeChanged) {
+        resetTouchModes(false);
+    }
+
+    private void resetTouchModes(boolean force) {
+        if (mTouchFeature == null || (!force && !mTouchModeChanged)) {
             return;
         }
 
@@ -247,7 +293,7 @@ public final class ThermalUtils {
     }
 
     protected void updateTouchRotation() {
-        if (!mTouchModeChanged) {
+        if (mTouchFeature == null || !mTouchModeChanged) {
             return;
         }
 
