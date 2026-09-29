@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="32dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="280dp">
+
+            <ImageView
+                android:layout_width="240dp"
+                android:layout_height="240dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/bypass_charging_illustration" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/parts_card_background"
+            android:gravity="center_vertical"
+            android:minHeight="104dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="20dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/charge_bypass_title"
+                    android:textAppearance="@style/TextAppearance.SettingsLib.TitleLarge"
+                    android:textColor="@color/settingslib_materialColorOnSurface" />
+
+                <TextView
+                    android:id="@+id/charge_bypass_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/charge_bypass_summary"
+                    android:textAppearance="@style/TextAppearance.SettingsLib.BodyMedium"
+                    android:textColor="@color/settingslib_materialColorOnSurfaceVariant" />
+            </LinearLayout>
+
+            <Switch
+                android:id="@+id/charge_bypass_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:contentDescription="@string/charge_bypass_title" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:paddingHorizontal="8dp"
+            android:text="@string/charge_bypass_warning"
+            android:textAppearance="@style/TextAppearance.SettingsLib.BodyMedium"
+            android:textColor="@color/settingslib_materialColorPrimary" />
+    </LinearLayout>
+</ScrollView>

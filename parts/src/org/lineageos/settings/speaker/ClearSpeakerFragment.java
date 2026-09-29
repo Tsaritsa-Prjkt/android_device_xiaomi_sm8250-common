@@ -24,89 +24,110 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
 
-import androidx.preference.Preference;
-import androidx.preference.SwitchPreferenceCompat;
-
-import com.android.settingslib.widget.SettingsBasePreferenceFragment;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import org.lineageos.settings.R;
 
 import java.io.IOException;
 
-public class ClearSpeakerFragment extends SettingsBasePreferenceFragment implements
-        Preference.OnPreferenceChangeListener {
+public class ClearSpeakerFragment extends Fragment {
 
     private static final String TAG = "ClearSpeakerFragment";
-    private static final String PREF_CLEAR_SPEAKER = "clear_speaker_pref";
     private static final int PLAY_DURATION_MS = 30000;
 
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private MediaPlayer mMediaPlayer;
-    private SwitchPreferenceCompat mClearSpeakerPref;
+    private ImageButton mActionButton;
+    private boolean mPlaying;
 
     @Override
-    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setPreferencesFromResource(R.xml.clear_speaker_settings, rootKey);
-
-        mClearSpeakerPref = findPreference(PREF_CLEAR_SPEAKER);
-        mClearSpeakerPref.setOnPreferenceChangeListener(this);
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+            Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.clear_speaker_layout, container, false);
     }
 
     @Override
-    public boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (preference == mClearSpeakerPref) {
-            boolean value = (Boolean) newValue;
-            if (value && startPlaying()) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        mActionButton = view.findViewById(R.id.clear_speaker_action);
+        mActionButton.setOnClickListener(v -> {
+            if (mPlaying) {
+                stopPlaying();
+            } else if (startPlaying()) {
                 mHandler.removeCallbacksAndMessages(null);
                 mHandler.postDelayed(this::stopPlaying, PLAY_DURATION_MS);
-                return true;
             }
-        }
-        return false;
+        });
+        updateButton();
     }
 
     @Override
     public void onStop() {
-        super.onStop();
         stopPlaying();
+        super.onStop();
     }
 
-    public boolean startPlaying() {
-        getActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+    private boolean startPlaying() {
+        requireActivity().setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        MediaPlayer player = new MediaPlayer();
+        player.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build());
-        mMediaPlayer.setLooping(true);
+        player.setLooping(true);
+        player.setOnErrorListener((mediaPlayer, what, extra) -> {
+            stopPlaying();
+            return true;
+        });
+
         try (AssetFileDescriptor afd = getResources().openRawResourceFd(
                 R.raw.clear_speaker_sound)) {
-            mMediaPlayer.setDataSource(afd);
-            mMediaPlayer.setVolume(1.0f, 1.0f);
-            mMediaPlayer.prepare();
-            mMediaPlayer.start();
-            mClearSpeakerPref.setEnabled(false);
-        } catch (IOException | IllegalArgumentException e) {
-            Log.e(TAG, "Failed to play speaker clean sound!", e);
+            player.setDataSource(afd);
+            player.setVolume(1.0f, 1.0f);
+            player.prepare();
+            player.start();
+            mMediaPlayer = player;
+            mPlaying = true;
+            updateButton();
+            return true;
+        } catch (IOException | IllegalArgumentException | IllegalStateException e) {
+            Log.e(TAG, "Failed to play speaker clean sound", e);
+            player.release();
             return false;
         }
-        return true;
     }
 
-    public void stopPlaying() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
+    private void stopPlaying() {
+        mHandler.removeCallbacksAndMessages(null);
+        if (mMediaPlayer != null) {
             try {
-                mMediaPlayer.stop();
+                if (mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.stop();
+                }
             } catch (IllegalStateException e) {
-                Log.e(TAG, "Failed to stop media player!", e);
+                Log.e(TAG, "Failed to stop speaker clean sound", e);
             } finally {
-                mMediaPlayer.reset();
                 mMediaPlayer.release();
                 mMediaPlayer = null;
             }
         }
-        mClearSpeakerPref.setEnabled(true);
-        mClearSpeakerPref.setChecked(false);
+        mPlaying = false;
+        updateButton();
+    }
+
+    private void updateButton() {
+        if (mActionButton == null) {
+            return;
+        }
+        mActionButton.setImageResource(mPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
+        mActionButton.setContentDescription(getString(mPlaying
+                ? R.string.clear_speaker_stop : R.string.clear_speaker_start));
     }
 }
