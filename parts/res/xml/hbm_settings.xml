@@ -16,34 +16,39 @@
      limitations under the License.
 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:settings="http://schemas.android.com/apk/res/org.lineageos.settings.HBMFragment"
-	android.title="@string/hbm_fragment_title">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:title="@string/hbm_fragment_title">
 
-    <PreferenceCategory>
-        <SwitchPreference
-            android:key="hbm"
-            android:title="@string/hbm_mode_title"
-            android:summary="@string/hbm_mode_summary"
-            android:defaultValue="false" />
+    <SwitchPreferenceCompat
+        android:key="hbm"
+        android:title="@string/hbm_mode_title"
+        android:summary="@string/hbm_mode_summary"
+        app:layout="@layout/preference_material_switch"
+        app:widgetLayout="@layout/preference_material_switch_widget"
+        app:iconSpaceReserved="false"
+        android:defaultValue="false" />
 
-        <SwitchPreference
-            android:key="auto_hbm"
-            android:title="@string/auto_hbm_title"
-            android:summary="@string/auto_hbm_summary" />
+    <SwitchPreferenceCompat
+        android:key="auto_hbm"
+        android:title="@string/auto_hbm_title"
+        android:summary="@string/auto_hbm_summary"
+        app:layout="@layout/preference_material_switch"
+        app:widgetLayout="@layout/preference_material_switch_widget"
+        app:iconSpaceReserved="false" />
 
-        <org.lineageos.settings.hbm.AutoHBMThresholdPreference
-            android:key="auto_hbm_threshold"
-            android:title="@string/auto_hbm_threshold_title"
-            android:summary="@string/auto_hbm_threshold_summary" />
+    <org.lineageos.settings.hbm.AutoHBMThresholdPreference
+        android:key="auto_hbm_threshold"
+        android:title="@string/auto_hbm_threshold_title"
+        android:summary="@string/auto_hbm_threshold_summary" />
 
-        <org.lineageos.settings.hbm.AutoHBMTimePreference
-            android:key="hbm_disable_time"
-            android:title="@string/hbm_disable_time_title"
-            android:summary="@string/hbm_disable_time_summary" />
+    <org.lineageos.settings.hbm.AutoHBMTimePreference
+        android:key="hbm_disable_time"
+        android:title="@string/hbm_disable_time_title"
+        android:summary="@string/hbm_disable_time_summary" />
 
-        <Preference
-            android:icon="@drawable/ic_info_outline"
-            android:summary="@string/hbm_mode_warning" 
-            android:persistent="false" />
-    </PreferenceCategory>
+    <Preference
+        android:icon="@drawable/ic_info_outline"
+        app:layout="@layout/preference_material_info"
+        android:summary="@string/hbm_mode_warning"
+        android:persistent="false" />
 </PreferenceScreen>

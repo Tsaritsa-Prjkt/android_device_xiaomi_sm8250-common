@@ -17,11 +17,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="3dp"
     android:minHeight="?android:attr/listPreferredItemHeightSmall"
     android:gravity="center_vertical"
-    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
-    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
-    android:background="?android:attr/activatedBackgroundIndicator"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:background="@drawable/parts_card_background"
     android:clipToPadding="false">
 
     <include layout="@layout/settingslib_icon_frame"/>
@@ -38,7 +40,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:singleLine="true"
-            android:textAppearance="?android:attr/textAppearanceListItem"
+            android:textAppearance="@style/TextAppearance.SettingsLib.TitleMedium"
+            android:textColor="@color/settingslib_materialColorOnSurface"
             android:ellipsize="marquee" />
 
         <TextView
@@ -47,8 +50,8 @@
             android:layout_height="wrap_content"
             android:layout_below="@android:id/title"
             android:layout_alignStart="@android:id/title"
-            android:textAppearance="?android:attr/textAppearanceListItemSecondary"
-            android:textColor="?android:attr/textColorSecondary"
+            android:textAppearance="@style/TextAppearance.SettingsLib.BodyMedium"
+            android:textColor="@color/settingslib_materialColorOnSurfaceVariant"
             android:maxLines="10"
             android:ellipsize="end" />
 
@@ -65,8 +68,8 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
-                android:textAppearance="?android:attr/textAppearanceListItemSecondary"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textAppearance="@style/TextAppearance.SettingsLib.BodyMedium"
+                android:textColor="@color/settingslib_materialColorOnSurfaceVariant"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
