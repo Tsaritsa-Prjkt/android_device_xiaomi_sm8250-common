@@ -20,12 +20,8 @@ package org.lineageos.settings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.hardware.display.DisplayManager;
-import android.os.IBinder;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.SystemProperties;
+import android.hardware.display.DisplayManager;
 import android.util.Log;
 import android.view.Display;
 import android.view.Display.HdrCapabilities;
@@ -54,7 +50,9 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         } catch (Exception e) {
             Log.d(TAG, "Dirac is not present in system");
         }
-        ThermalUtils.startService(context);
+        if (ThermalUtils.isServiceEnabled(context)) {
+            ThermalUtils.startService(context);
+        }
         RefreshUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
         FileUtils.enableService(context);
