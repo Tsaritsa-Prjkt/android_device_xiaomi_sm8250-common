@@ -103,7 +103,7 @@ PRODUCT_PACKAGES += \
     audio.bluetooth.default \
     audio.primary.kona \
     audio.r_submix.default \
-    audio.usb.default \
+    audio.usb.default
 
 PRODUCT_PACKAGES += \
     libaudiopreprocessing \
@@ -159,16 +159,12 @@ PRODUCT_PACKAGES += \
 
 # Display
 PRODUCT_PACKAGES += \
-    vendor.qti.hardware.display.composer-service
-
-PRODUCT_PACKAGES += \
     android.hardware.graphics.mapper@3.0-impl-qti-display \
     android.hardware.graphics.mapper@4.0-impl-qti-display \
     vendor.display.config@1.9 \
     vendor.display.config@1.9.vendor \
-    vendor.qti.hardware.display.allocator-service
-
-PRODUCT_PACKAGES += \
+    vendor.qti.hardware.display.allocator-service \
+    vendor.qti.hardware.display.composer-service \
     vendor.qti.hardware.memtrack-service
 
 $(call soong_config_set,qtidisplay,gralloc_handle_has_reserved_size,true)
