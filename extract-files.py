@@ -53,6 +53,8 @@ blob_fixups: blob_fixups_user_type = {
     'vendor/etc/seccomp_policy/imsrtp.policy': blob_fixup()
         .regex_replace('socket: 1\n', '')
         .regex_replace('\nsigreturn: 1', ''),
+    'vendor/etc/configstore/vpp.configstore.xml': blob_fixup()
+        .regex_replace(r'(<capability key="enable" value=)"false"/>', r'\g<1>"true"/>'),
 }  # fmt: skip
 
 
