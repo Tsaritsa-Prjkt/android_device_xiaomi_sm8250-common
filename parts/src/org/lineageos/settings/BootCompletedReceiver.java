@@ -31,6 +31,7 @@ import androidx.preference.PreferenceManager;
 import org.lineageos.settings.kcal.KcalSettings;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
+import org.lineageos.settings.resolution.ResolutionUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
 import org.lineageos.settings.utils.FileUtils;
 
@@ -48,6 +49,7 @@ public class BootCompletedReceiver extends BroadcastReceiver {
         if (ThermalUtils.isServiceEnabled(context)) {
             ThermalUtils.startService(context);
         }
+        ResolutionUtils.startService(context);
         RefreshUtils.startService(context);
         VppUtils.startService(context);
         TouchSamplingUtils.restoreSamplingValue(context);
