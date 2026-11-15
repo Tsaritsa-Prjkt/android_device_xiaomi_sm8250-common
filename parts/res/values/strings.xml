@@ -151,4 +151,20 @@
     <string name="kcal_contrast">Contrast</string>
     <string name="kcal_hue">Hue</string>
     <string name="kcal_reset">Reset to defaults</string>
+
+    <!-- Resolution scaling -->
+    <string name="upscale_title">Per-app Upscaling</string>
+    <string name="upscale_summary">Set upscaling for specific applications</string>
+    <string name="upscale_default">Native</string>
+    <string name="upscale_480p">Performance</string>
+    <string name="upscale_540p">Balanced</string>
+    <string name="upscale_720p">Quality</string>
+    <string name="system_resolution_title">System resolution</string>
+    <string name="system_resolution_summary">Baseline applied system-wide: %1$s</string>
+    <string name="system_resolution_summary_setting">Baseline applied system-wide</string>
+    <string name="system_resolution_note">Per-app rules upscaling override the baseline while those apps are in the foreground</string>
+    <string name="resolution_default">Default</string>
+    <string name="resolution_480p">480p</string>
+    <string name="resolution_540p">540p</string>
+    <string name="resolution_720p">720p</string>
 </resources>
