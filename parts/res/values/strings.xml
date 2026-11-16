@@ -135,4 +135,20 @@
     <string name="vpp_select_apps_summary_none">No apps selected</string>
     <string name="vpp_select_apps_summary_count">%d apps selected</string>
     <string name="vpp_select_apps_dialog_title">Select Video Apps</string>
+    <!-- KCAL color calibration -->
+    <string name="kcal_title">Color Calibration</string>
+    <string name="kcal_summary">Adjust display RGB, saturation, value, contrast, and hue</string>
+    <string name="kcal_enable">RGB adjustments</string>
+    <string name="kcal_active">Your KCAL profile is active.</string>
+    <string name="kcal_inactive">Turn on KCAL to apply your saved colors.</string>
+    <string name="kcal_unavailable">KCAL is unavailable. This kernel must provide writable color calibration controls.</string>
+    <string name="kcal_error">Could not apply the change. Your saved profile was kept.</string>
+    <string name="kcal_red">R</string>
+    <string name="kcal_green">G</string>
+    <string name="kcal_blue">B</string>
+    <string name="kcal_saturation">Saturation</string>
+    <string name="kcal_value">Value</string>
+    <string name="kcal_contrast">Contrast</string>
+    <string name="kcal_hue">Hue</string>
+    <string name="kcal_reset">Reset to defaults</string>
 </resources>

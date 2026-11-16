@@ -15,3 +15,6 @@ set_prop(vendor_init, vendor_fingerprint_prop)
 
 # schedtune
 allow vendor_init device:file { create read write };
+
+# Assign KCAL module parameters to the system UID at boot.
+allow vendor_init vendor_sysfs_kcal:file setattr;
