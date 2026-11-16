@@ -19,3 +19,6 @@ allow devicesettings_app vendor_sysfs_graphics:file rw_file_perms;
 # Allow devicesettings_app to access battery sysfs for charge bypass
 allow devicesettings_app vendor_sysfs_battery_supply:dir search;
 allow devicesettings_app vendor_sysfs_battery_supply:file rw_file_perms;
+
+# KCAL color calibration
+allow devicesettings_app vendor_sysfs_kcal:file { getattr open read write };

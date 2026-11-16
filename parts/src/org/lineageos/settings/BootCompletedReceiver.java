@@ -28,6 +28,7 @@ import android.view.Display;
 import android.view.Display.HdrCapabilities;
 import androidx.preference.PreferenceManager;
 
+import org.lineageos.settings.kcal.KcalSettings;
 import org.lineageos.settings.thermal.ThermalUtils;
 import org.lineageos.settings.refreshrate.RefreshUtils;
 import org.lineageos.settings.touchsampling.TouchSamplingUtils;
@@ -55,6 +56,9 @@ public class BootCompletedReceiver extends BroadcastReceiver {
 
         boolean dcDimmingEnabled = sharedPrefs.getBoolean(DC_DIMMING_ENABLE_KEY, false);
         FileUtils.writeLine(DC_DIMMING_NODE, dcDimmingEnabled ? "1" : "0");
+
+        final PendingResult pending = goAsync();
+        KcalSettings.restore(context, pending::finish);
     }
     
     private static void overrideHdrTypes(Context context) {
