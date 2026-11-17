@@ -18,7 +18,9 @@ package org.lineageos.settings.resolution;
 
 import android.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import android.hardware.display.DisplayManager;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +36,23 @@ public class SystemResolutionSettingsFragment extends Fragment implements Adapte
     private ResolutionUtils mResolutionUtils;
     private Spinner mModeSpinner;
     private TextView mSummaryView;
+    private DisplayManager mDisplayManager;
+
+    private final DisplayManager.DisplayListener mDisplayListener =
+            new DisplayManager.DisplayListener() {
+                @Override
+                public void onDisplayAdded(int displayId) {}
+
+                @Override
+                public void onDisplayRemoved(int displayId) {}
+
+                @Override
+                public void onDisplayChanged(int displayId) {
+                    if (displayId == Display.DEFAULT_DISPLAY) {
+                        updateSummary(mResolutionUtils.getGlobalState());
+                    }
+                }
+            };
 
     private static final int[] ENTRY_LABELS = new int[] {
             R.string.resolution_default,
@@ -62,23 +81,34 @@ public class SystemResolutionSettingsFragment extends Fragment implements Adapte
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mModeSpinner.setAdapter(adapter);
-        mModeSpinner.setOnItemSelectedListener(this);
 
         int current = mResolutionUtils.getGlobalState();
         if (current < 0 || current >= ENTRY_LABELS.length) current = 0;
         mModeSpinner.setSelection(current, false);
+        mModeSpinner.setOnItemSelectedListener(this);
         updateSummary(current);
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        mDisplayManager = requireContext().getSystemService(DisplayManager.class);
+        mDisplayManager.registerDisplayListener(mDisplayListener, null);
+        updateSummary(mResolutionUtils.getGlobalState());
+        ResolutionUtils.startService(requireContext());
         getActivity().setTitle(getResources().getString(R.string.system_resolution_title));
+    }
+
+    @Override
+    public void onPause() {
+        mDisplayManager.unregisterDisplayListener(mDisplayListener);
+        super.onPause();
     }
 
     private void updateSummary(int state) {
         String res = mResolutionUtils.getResolutionString(state);
-        mSummaryView.setText(getString(R.string.system_resolution_summary, res));
+        mSummaryView.setText(getString(R.string.system_resolution_summary, res,
+                mResolutionUtils.getCurrentResolutionString()));
     }
 
     @Override
