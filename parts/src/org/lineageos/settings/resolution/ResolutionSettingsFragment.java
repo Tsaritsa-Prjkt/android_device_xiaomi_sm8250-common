@@ -90,6 +90,7 @@ public class ResolutionSettingsFragment extends Fragment implements Applications
     @Override
     public void onResume() {
         super.onResume();
+        ResolutionUtils.startService(requireContext());
         getActivity().setTitle(getResources().getString(R.string.upscale_title));
         rebuild();
     }
@@ -276,8 +277,9 @@ public class ResolutionSettingsFragment extends Fragment implements Applications
 
             if (entry == null) return;
 
+            holder.mode.setOnItemSelectedListener(null);
+            holder.mode.setTag(entry);
             holder.mode.setAdapter(new ModeAdapter(context));
-            holder.mode.setOnItemSelectedListener(this);
             holder.title.setText(entry.label);
             holder.title.setOnClickListener(v -> holder.mode.performClick());
 
@@ -286,7 +288,7 @@ public class ResolutionSettingsFragment extends Fragment implements Applications
 
             int packageState = mResolutionUtils.getStateForPackage(entry.info.packageName);
             holder.mode.setSelection(packageState, false);
-            holder.mode.setTag(entry);
+            holder.mode.setOnItemSelectedListener(this);
             holder.stateIcon.setImageResource(getStateDrawable(packageState));
         }
 
@@ -303,6 +305,7 @@ public class ResolutionSettingsFragment extends Fragment implements Applications
         @Override
         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
             final ApplicationsState.AppEntry entry = (ApplicationsState.AppEntry) parent.getTag();
+            if (entry == null) return;
             int currentState = mResolutionUtils.getStateForPackage(entry.info.packageName);
             if (currentState != position) {
                 mResolutionUtils.writePackage(entry.info.packageName, position);

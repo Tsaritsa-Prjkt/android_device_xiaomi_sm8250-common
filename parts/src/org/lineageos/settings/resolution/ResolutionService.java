@@ -20,53 +20,117 @@ import android.app.ActivityManager;
 import android.app.ActivityTaskManager;
 import android.app.ActivityTaskManager.RootTaskInfo;
 import android.app.IActivityTaskManager;
-import android.app.TaskStackListener;
+import android.app.KeyguardManager;
 import android.app.Service;
+import android.app.TaskStackListener;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
-import android.util.Log;
+import android.os.Looper;
+import android.os.PowerManager;
 import android.os.RemoteException;
+import android.os.UserHandle;
+import android.util.Log;
+
+import androidx.preference.PreferenceManager;
 
 public class ResolutionService extends Service {
-
     private static final String TAG = "ResolutionService";
-    private static final boolean DEBUG = false;
-    private String mPreviousApp;
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 300;
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private ResolutionUtils mResolutionUtils;
     private IActivityTaskManager mActivityTaskManager;
+    private SharedPreferences mPreferences;
+    private int mRetries;
+    private boolean mDestroyed;
 
-    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+    private final Runnable mApplyResolution = this::applyForegroundResolution;
+    private final Runnable mScheduleApply = () -> {
+        if (mDestroyed) return;
+        mRetries = 0;
+        mHandler.removeCallbacks(mApplyResolution);
+        mHandler.post(mApplyResolution);
+    };
+
+    private void scheduleApply() {
+        // TaskStackListener may run on Binder threads. Coalesce focus and
+        // preference events, then perform all display writes on the main looper.
+        mHandler.removeCallbacks(mScheduleApply);
+        mHandler.post(mScheduleApply);
+    }
+
+    private final SharedPreferences.OnSharedPreferenceChangeListener mPreferenceListener =
+            (preferences, key) -> {
+                if (ResolutionUtils.isResolutionPreference(key)) scheduleApply();
+            };
+
+    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            mPreviousApp = "";
+            scheduleApply();
+        }
+    };
+
+    private final TaskStackListener mTaskListener = new TaskStackListener() {
+        @Override
+        public void onTaskStackChanged() {
+            scheduleApply();
         }
     };
 
     @Override
     public void onCreate() {
-        if (DEBUG) Log.d(TAG, "Creating service");
-
+        super.onCreate();
+        mResolutionUtils = new ResolutionUtils(this);
+        mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mPreferences.registerOnSharedPreferenceChangeListener(mPreferenceListener);
+        mActivityTaskManager = ActivityTaskManager.getService();
         try {
-            mActivityTaskManager = ActivityTaskManager.getService();
             mActivityTaskManager.registerTaskStackListener(mTaskListener);
         } catch (RemoteException e) {
-            // Do nothing
+            Log.e(TAG, "Unable to observe foreground tasks", e);
         }
-
-        mResolutionUtils = new ResolutionUtils(this);
-        registerReceiver();
-        super.onCreate();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_USER_PRESENT);
+        filter.addAction(Intent.ACTION_USER_SWITCHED);
+        registerReceiver(mIntentReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (DEBUG) Log.d(TAG, "Starting service");
+        // Reconcile on a START_STICKY restart too, including a null intent.
+        scheduleApply();
         return START_STICKY;
+    }
+
+    private void applyForegroundResolution() {
+        if (mDestroyed || ActivityManager.getCurrentUser() != UserHandle.myUserId()) return;
+        boolean applied = false;
+        try {
+            PowerManager power = getSystemService(PowerManager.class);
+            KeyguardManager keyguard = getSystemService(KeyguardManager.class);
+            if (!power.isInteractive() || keyguard.isKeyguardLocked()) {
+                applied = mResolutionUtils.applyBaselineFromGlobal();
+            } else {
+                // Resolve once; never restore the baseline before an app override.
+                RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
+                applied = mResolutionUtils.setResolution(info != null && info.topActivity != null
+                        ? info.topActivity.getPackageName() : null);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "Unable to read foreground task", e);
+        }
+        if (!applied && mRetries++ < MAX_RETRIES) {
+            mHandler.postDelayed(mApplyResolution, RETRY_DELAY_MS);
+        }
     }
 
     @Override
@@ -76,48 +140,15 @@ public class ResolutionService extends Service {
 
     @Override
     public void onDestroy() {
-        if (DEBUG) Log.d(TAG, "Destroying service");
+        mDestroyed = true;
+        mHandler.removeCallbacksAndMessages(null);
+        mPreferences.unregisterOnSharedPreferenceChangeListener(mPreferenceListener);
         try {
-            if (mActivityTaskManager != null) {
-                mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
-            }
+            mActivityTaskManager.unregisterTaskStackListener(mTaskListener);
         } catch (RemoteException e) {
-            // Do nothing
+            Log.e(TAG, "Unable to remove foreground task listener", e);
         }
         unregisterReceiver(mIntentReceiver);
         super.onDestroy();
     }
-
-    private void registerReceiver() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        this.registerReceiver(mIntentReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-    }
-
-    private final TaskStackListener mTaskListener = new TaskStackListener() {
-        @Override
-        public void onTaskStackChanged() {
-            try {
-                final RootTaskInfo info = mActivityTaskManager.getFocusedRootTaskInfo();
-                if (info == null || info.topActivity == null) {
-                    return;
-                }
-
-                String foregroundApp = info.topActivity.getPackageName();
-                int state = mResolutionUtils.getStateForPackage(foregroundApp);
-
-                if (!mResolutionUtils.isAppInList) {
-                    mResolutionUtils.restoreDefaultResolution();
-                }
-
-                if (!foregroundApp.equals(mPreviousApp)) {
-                    mResolutionUtils.setResolution(foregroundApp);
-                    mPreviousApp = foregroundApp;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    };
 }

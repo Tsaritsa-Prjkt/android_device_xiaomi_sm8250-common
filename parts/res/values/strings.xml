@@ -160,7 +160,7 @@
     <string name="upscale_540p">Balanced</string>
     <string name="upscale_720p">Quality</string>
     <string name="system_resolution_title">System resolution</string>
-    <string name="system_resolution_summary">Baseline applied system-wide: %1$s</string>
+    <string name="system_resolution_summary">System-wide target: %1$s\nActive resolution: %2$s</string>
     <string name="system_resolution_summary_setting">Baseline applied system-wide</string>
     <string name="system_resolution_note">Per-app rules upscaling override the baseline while those apps are in the foreground</string>
     <string name="resolution_default">Default</string>
