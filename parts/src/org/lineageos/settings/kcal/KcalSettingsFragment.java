@@ -18,8 +18,6 @@ import androidx.fragment.app.Fragment;
 
 import org.lineageos.settings.R;
 
-import java.io.IOException;
-
 public class KcalSettingsFragment extends Fragment {
     private static final int[] LABELS = { R.string.kcal_red, R.string.kcal_green,
             R.string.kcal_blue, R.string.kcal_saturation, R.string.kcal_value,
@@ -31,6 +29,13 @@ public class KcalSettingsFragment extends Fragment {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final SeekBar[] sliders = new SeekBar[LABELS.length];
     private KcalSettings settings;
+    private KcalUpdateQueue updates;
+    private boolean previewScheduled;
+    private boolean needsSave;
+    private final Runnable preview = () -> {
+        previewScheduled = false;
+        if (getView() != null) apply(false);
+    };
     private CompoundButton toggle;
     private View reset;
     private TextView status;
@@ -45,13 +50,21 @@ public class KcalSettingsFragment extends Fragment {
     public void onViewCreated(View view, Bundle state) {
         super.onViewCreated(view, state);
         settings = new KcalSettings(requireContext());
+        updates = new KcalUpdateQueue(KcalSettings.IO, settings::change);
         toggle = view.findViewById(R.id.kcal_switch);
         reset = view.findViewById(R.id.kcal_reset);
         status = view.findViewById(R.id.kcal_status);
         LinearLayout rows = view.findViewById(R.id.kcal_sliders);
         for (int i = 0; i < sliders.length; i++) addSlider(rows, i);
-        toggle.setOnClickListener(v -> update(toggle.isChecked(), values()));
-        reset.setOnClickListener(v -> update(toggle.isChecked(), KcalNodes.DEFAULT.clone()));
+        setControls(false, false);
+        toggle.setOnClickListener(v -> {
+            setControls(true, toggle.isChecked());
+            apply(true);
+        });
+        reset.setOnClickListener(v -> {
+            for (int i = 0; i < sliders.length; i++) sliders[i].setProgress(KcalNodes.DEFAULT[i]);
+            apply(true);
+        });
     }
 
     private void addSlider(LinearLayout rows, int index) {
@@ -74,23 +87,25 @@ public class KcalSettingsFragment extends Fragment {
         slider.setThumbTintList(tint);
         slider.setProgressTintList(tint);
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            private boolean tracking;
-
             @Override
-            public void onStartTrackingTouch(SeekBar bar) {
-                tracking = true;
-            }
+            public void onStartTrackingTouch(SeekBar bar) {}
 
             @Override
             public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 number.setText(Integer.toString(progress));
-                if (fromUser && !tracking) update(true, values()); // Keyboard or accessibility.
+                if (!fromUser) return;
+                needsSave = true;
+                // Invalidate older completions as soon as the user's intent changes.
+                generation++;
+                if (!previewScheduled) {
+                    previewScheduled = true;
+                    main.postDelayed(preview, 16);
+                }
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar bar) {
-                tracking = false;
-                if (bar.isEnabled()) update(true, values());
+                if (bar.isEnabled()) apply(true);
             }
         });
     }
@@ -104,32 +119,42 @@ public class KcalSettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        update(null, null);
+        load();
     }
 
-    private void update(Boolean requested, int[] profile) {
+    private void cancelPreview() {
+        main.removeCallbacks(preview);
+        previewScheduled = false;
+    }
+
+    private void apply(boolean persist) {
+        cancelPreview();
+        final int task = ++generation;
+        final boolean enabled = toggle.isChecked();
+        final int[] profile = values();
+        if (persist) needsSave = false;
+        updates.submit(enabled, profile, persist, error -> main.post(() -> {
+            if (task != generation || getView() == null) return;
+            if (error != null) {
+                Log.e("XiaomiParts", "Could not apply KCAL", error);
+                status.setText(R.string.kcal_error);
+                // A failed preview is not a saved profile. Read it back on resume.
+            } else {
+                status.setText(enabled ? R.string.kcal_active : R.string.kcal_inactive);
+                getView().postInvalidateOnAnimation();
+            }
+        }));
+    }
+
+    private void load() {
         final int task = ++generation;
         final KcalSettings current = settings;
         setControls(false, false);
         KcalSettings.IO.execute(() -> {
-            boolean failed = false;
-            if (requested == null) {
-                current.discover();
-            } else {
-                try {
-                    current.change(requested, profile);
-                } catch (IOException e) {
-                    failed = true;
-                    Log.e("XiaomiParts", "Could not apply KCAL", e);
-                    current.discover();
-                }
-            }
+            current.discover();
             KcalNodes nodes = current.nodes;
             int[] saved = current.profile();
             boolean enabled = nodes != null && current.enabled();
-            int message = nodes == null ? R.string.kcal_unavailable
-                    : failed ? R.string.kcal_error
-                    : enabled ? R.string.kcal_active : R.string.kcal_inactive;
             main.post(() -> {
                 if (task != generation || getView() == null) return;
                 toggle.setChecked(enabled);
@@ -137,10 +162,18 @@ public class KcalSettingsFragment extends Fragment {
                     sliders[i].setMin(nodes == null ? KcalNodes.MIN[i] : nodes.minimum(i));
                     sliders[i].setProgress(saved[i]);
                 }
-                status.setText(message);
+                status.setText(nodes == null ? R.string.kcal_unavailable
+                        : enabled ? R.string.kcal_active : R.string.kcal_inactive);
                 setControls(nodes != null, enabled);
             });
         });
+    }
+
+    @Override
+    public void onPause() {
+        if (needsSave && toggle != null && toggle.isEnabled()) apply(true);
+        cancelPreview();
+        super.onPause();
     }
 
     private void setControls(boolean supported, boolean enabled) {
@@ -154,6 +187,7 @@ public class KcalSettingsFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        cancelPreview();
         generation++;
         java.util.Arrays.fill(sliders, null);
         toggle = null;

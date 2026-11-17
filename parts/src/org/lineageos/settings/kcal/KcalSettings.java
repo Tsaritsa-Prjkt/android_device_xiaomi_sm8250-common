@@ -39,9 +39,15 @@ public final class KcalSettings {
         return values;
     }
 
-    void change(boolean enabled, int[] profile) throws IOException {
+    void change(boolean enabled, int[] profile, boolean persist) throws IOException {
         if (nodes == null) throw new IOException("KCAL unavailable");
-        nodes.apply(enabled, profile);
+        try {
+            nodes.apply(enabled, profile);
+        } finally {
+            // Also display the rolled-back state after a partial write fails.
+            KcalDisplay.refresh();
+        }
+        if (!persist) return;
         SharedPreferences.Editor edit = preferences.edit().putBoolean(ENABLED, enabled);
         for (int i = 0; i < profile.length; i++) edit.putInt("channel_" + i, profile[i]);
         edit.apply();
@@ -55,6 +61,7 @@ public final class KcalSettings {
                 settings.discover();
                 if (settings.nodes != null) {
                     settings.nodes.apply(settings.enabled(), settings.profile());
+                    KcalDisplay.refresh();
                 }
             } catch (IOException e) {
                 Log.e("XiaomiParts", "Could not restore KCAL", e);

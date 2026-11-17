@@ -39,7 +39,7 @@ final class KcalNodes {
     }
 
     int minimum(int channel) {
-        // sde_setup_dspp_pccv4 clamps the three module parameters to 20.
+        // The MSM DRM KCAL interface uses a minimum RGB gain of 20.
         return msmDrm && channel < 3 ? 20 : MIN[channel];
     }
 
@@ -145,6 +145,14 @@ final class KcalNodes {
     }
 
     void apply(boolean enabled, int[] profile) throws IOException {
+        if (profile == null || profile.length != DEFAULT.length) {
+            throw new IOException("Invalid KCAL profile length");
+        }
+        for (int i = 0; i < profile.length; i++) {
+            if (profile[i] < minimum(i) || profile[i] > MAX[i]) {
+                throw new IOException("Invalid KCAL channel " + i + ": " + profile[i]);
+            }
+        }
         Map<Path, String> before = snapshot();
         int[] target = enabled ? profile : DEFAULT;
         Map<Path, String> desired = new LinkedHashMap<>();
@@ -160,8 +168,11 @@ final class KcalNodes {
                 if (item.getValue().equals(before.get(path))) continue;
                 undo.put(path, before.get(path));
                 write(path, item.getValue());
+                int count = combined && path.equals(channels[0]) ? 3 : 1;
+                if (!read(path, count).equals(item.getValue())) {
+                    throw new IOException("KCAL readback mismatch at " + path);
+                }
             }
-            if (!snapshot().equals(desired)) throw new IOException("KCAL readback mismatch");
         } catch (IOException error) {
             for (Map.Entry<Path, String> item : undo.entrySet()) {
                 try {
